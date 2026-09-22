@@ -43,3 +43,18 @@ projection from the first onto the second — everything else is taste.
 scenes, the full analysis/mapping/synthesis chain, and an **angle lab** that re-analyses
 the current scene at nine angles from −12° to +12° with no temporal smoothing, to show
 how much the derived key actually moves. Open it directly in a browser; no server needed.
+
+## Building
+
+`index.html` is generated — don't edit it directly.
+
+```
+python3 tools/build.py      # web/pad.body.html  ->  index.html
+```
+
+`web/pad.body.html` is the page as the claude.ai artifact host wants it: a `<title>`, a
+`<style>`, markup and a `<script>`, with no document skeleton, because that host supplies
+one. A plain web server supplies nothing, so `tools/build.py` adds the parts that matter —
+most importantly the **viewport meta**, without which a phone renders the page at a 980px
+virtual width and skips every mobile media query. It also stamps the build time onto
+`<html data-build>`, which the footer prints, and sets no-cache directives.
