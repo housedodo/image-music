@@ -114,8 +114,8 @@
   .mini{display:none;}
 
   /* PHONE, SIMPLE MODE.
-     One screen: the picture, take a photo, hold the pad, export. Everything
-     else is one tap away behind "More" rather than scrolled past. */
+     One screen: the picture, take a photo, upload a photo, play. Everything
+     else -- export included -- is one tap away behind "More". */
   @media(max-width:780px){
     .mini{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
     .mini span{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-3);}
@@ -143,9 +143,7 @@
     body:not(.expanded) .patch{display:none;}
     body:not(.expanded) .step{display:none;}
     body:not(.expanded) .transport{margin-top:8px;}
-    body:not(.expanded) .export{background:none;border:0;padding:0;margin-top:10px;}
-    body:not(.expanded) #exp{min-height:48px;}
-    body:not(.expanded) .status{text-align:center;}
+    body:not(.expanded) .export{display:none;}
   }
 
   @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
@@ -196,7 +194,7 @@
       </div>
 
       <div class="transport">
-        <button class="solid hold" id="play">Hold the pad</button>
+        <button class="solid hold" id="play">▶ Play</button>
         <div class="step">
           <button id="down" aria-label="Transpose down">−</button>
           <span id="tr">±0 st</span>
@@ -289,7 +287,7 @@
 </div>
 
 <div class="dock">
-  <button class="solid" id="dockPlay">Hold</button>
+  <button class="solid" id="dockPlay">Play</button>
   <button class="jade" id="dockExp">Export</button>
 </div>
 
@@ -911,8 +909,8 @@ $("live").addEventListener("click",function(){
 function setPlaying(on){
   var G=live(); G.ctx.resume();
   state.playing=on;
-  $("play").textContent=on?"Release":"Hold the pad";
-  $("dockPlay").textContent=on?"Release":"Hold";
+  $("play").textContent=on?"■ Stop":"▶ Play";
+  $("dockPlay").textContent=on?"Stop":"Play";
   if(on){ applyTo(G,state.patch,notesOf(state.patch),0.1); G.out.gain.setTargetAtTime(master,G.ctx.currentTime,1.4); }
   else { G.out.gain.setTargetAtTime(0,G.ctx.currentTime,0.9); $("breath").style.transform="scaleX(0)"; }
 }
