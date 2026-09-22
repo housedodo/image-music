@@ -13,7 +13,7 @@ cd web && python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-Drop in an image (or hit "Camera"), press **Play**. Every knob in the UI corresponds to a
+Open `pad.html` for pad mode, or `index.html` for the sequencer. Drop in an image (or hit "Camera") and press play. Every knob in the UI corresponds to a
 documented mapping rule.
 
 ## Read next
@@ -21,7 +21,8 @@ documented mapping rule.
 | File | What's in it |
 |---|---|
 | [`docs/CONCEPT.md`](docs/CONCEPT.md) | The idea, the three possible products, the reasoning behind every sound choice |
-| [`docs/MAPPING.md`](docs/MAPPING.md) | The image-feature → music-parameter table, precisely specified |
+| [`docs/PAD.md`](docs/PAD.md) | **Pad mode** — one image, one sustained chord. The recommended default |
+| [`docs/MAPPING.md`](docs/MAPPING.md) | The full sequencer mapping: image-feature → music-parameter, precisely specified |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Staged build plan, tech options with trade-offs |
 | [`web/`](web/) | The prototype: analysis, mapping, synthesis, sequencer |
 
