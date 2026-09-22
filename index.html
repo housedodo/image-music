@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 12:41 UTC">
+<html lang="en" data-build="2026-09-22 12:45 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -282,7 +282,7 @@
         <h2>Patch</h2>
         <p class="chordline" id="chord">—</p>
         <p class="voicing" id="voicing">—</p>
-        <details id="rowsWrap" open><summary>All ten mappings</summary><div id="rows"></div></details>
+        <details id="rowsWrap" open><summary>All fourteen mappings</summary><div id="rows"></div></details>
         <div class="bandlegend expert" id="bandlegend"></div>
         <p class="near" id="near"></p>
         <p class="fp" id="fp"></p>
@@ -1193,7 +1193,7 @@ function orientOf(w,h){ var r=w/h; return r>1.15?"landscape":r<0.87?"portrait":"
 
 var ROWS=[
   ["hue","Root","dominant hue",function(p){return p.f.hueDom;},function(p){return p.rootName;}],
-  ["lightness","Quality","bright → dark",function(p){return p.c.light;},function(p){return p.quality;}],
+  ["grid","Chord","valence × arousal",function(p){return p.affect.valence;},function(p){return p.quality;}],
   ["dominance","Purity","one colour ↔ many",function(p){return p.c.dominance;},
     function(p){return p.layers[0].dom>.62?"pure":p.layers[0].dom<.34?"mixed":"even";}],
   ["feeling","Mood","warm ↔ cool",function(p){return p.affect.valence;},function(p){return p.mood;}],
