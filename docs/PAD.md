@@ -119,3 +119,78 @@ means a pad can be matched to a track's key without re-shooting.
 `claude.use("downloads")` when the page runs as an artifact (the sandbox blocks `<a download>`),
 falling back to a blob link when served normally. Note the artifact download allowlist has no
 `.wav` or `.mid` entry — packing the kit as `.zip` is what makes the audio deliverable at all.
+
+
+---
+
+# Layers and detail
+
+## One layer per photo (up to four)
+
+The first photo sets the key, the chord quality and the effects bed. Every further photo
+becomes its own layer:
+
+| Per-layer, from that photo | |
+|---|---|
+| root | its dominant hue, **snapped into the first photo's scale** so it can only add consonant tones |
+| register | photos are sorted by lightness — darkest takes the bottom octave, brightest the top |
+| voice count | its saturation, adjusted by its colour dominance |
+| cutoff, Q | its brightness and contrast, on its own lowpass |
+| breath rate | its edge density, on its own LFO |
+| pan, gain | its index in the stack and its L/R colour difference |
+
+Measured on four stacked photos: 2 notes becomes 11, spread octave 2 → 5, with layer
+cutoffs at 319 Hz / 403 Hz / 1.2 kHz / 2.5 kHz and pan from −0.30 to +0.30. "More detailed"
+here means four independently filtered voices at four heights, not a busier chord.
+
+## Colour dominance
+
+`dominance` is the share of the saturation²-weighted hue histogram held by its strongest
+peak (plus its two neighbours).
+
+| | effect |
+|---|---|
+| high (one strong colour) | one fewer note, detune scaled down — purer, more focused |
+| low (many colours) | one more note, detune scaled up — wider, hazier |
+
+A genuine **second** hue peak (share > 0.16, measured after suppressing the first peak and
+its neighbours) contributes its own chord tone an octave up, snapped into the key with the
+root excluded so it is always a real added colour. Measured: a single-hue frame reads 0.88
+and plays 3 notes; a two-hue frame reads 0.11, plays 5, and adds an F against a G root.
+
+## Effects from fine detail
+
+### Delay ← spatial repetition
+
+Autocorrelation of the column-luminance signal across the frame. The peak lag is the
+spacing; delay time is `0.09 + (lag/width) × 1.55` seconds.
+
+Scoring the raw peak does not work — random speckle produces a broad hump that scores as
+high as a fence. **Real periodicity repeats**, so the score takes the weaker of the
+correlation at the peak lag and at twice it, minus the mean correlation:
+
+```
+strength = clamp( (min(ac[L], ac[2L]) − mean(ac)) × 2.6 )
+```
+
+Measured: a regular 16px fence scores 1.000 and gives 284 ms; a 32px window grid scores
+1.000 and gives 478 ms; bands at irregular widths score 0.077 and per-pixel noise 0.000 —
+both get no echo, because mix and feedback are gated at `(strength − 0.42)`.
+
+### Chorus ← grain
+
+Mean chroma disagreement between horizontally adjacent pixels, driving two opposed
+modulated delays (±depth, hard-panned). Fine-grained surfaces get ensemble movement;
+smooth gradients stay still.
+
+### Reverb pre-delay ← depth
+
+Absolute difference between top-half and bottom-half mean luminance, read as a depth cue.
+A strong gradient pushes the pre-delay from 5 ms to 90 ms, so the room gets bigger.
+
+## Verifying
+
+`tools/calibration/run3.mjs` prints the detail features, the delay mapping and the layer
+stack; `ctrl.mjs` runs the periodicity detector against regular, irregular and random
+controls. Both slice the core out of `web/pad.body.html`, so they cannot drift from what
+ships.

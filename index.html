@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 11:21 UTC">
+<html lang="en" data-build="2026-09-22 11:31 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -52,6 +52,18 @@
     background:rgba(4,8,8,.62);color:#f2f7f5;padding:4px 8px;border-radius:2px;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .breath{position:absolute;inset:auto 0 0 0;height:2px;background:var(--jade);transform-origin:left;transform:scaleX(0);}
 
+  .frames{display:flex;gap:6px;margin-top:8px;align-items:stretch;}
+  .frames .fr{position:relative;flex:0 0 auto;width:62px;border:1px solid var(--line);border-radius:4px;
+    overflow:hidden;background:var(--panel);padding:0;min-height:0;display:block;}
+  .frames .fr[aria-current=true]{border-color:var(--jade);box-shadow:0 0 0 2px var(--jade-soft);}
+  .frames .fr img{display:block;width:100%;height:42px;object-fit:cover;}
+  .frames .fr .role{display:block;font-family:var(--mono);font-size:7.5px;letter-spacing:.04em;
+    color:var(--ink-3);padding:2px 3px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .frames .fr .x{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:8px;border:0;padding:0;
+    background:rgba(8,10,10,.72);color:#fff;font-size:11px;line-height:16px;min-height:0;display:flex;
+    align-items:center;justify-content:center;}
+  .frames .hint{flex:1;display:flex;align-items:center;font-family:var(--mono);font-size:9px;color:var(--ink-3);
+    line-height:1.4;padding-left:2px;}
   .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px;}
   @media(min-width:781px){.acts{grid-template-columns:repeat(4,1fr);}}
   .acts>*{min-height:46px;}
@@ -198,7 +210,7 @@
   </div>
   <p class="eyebrow">image-music · pad mode</p>
   <h1>Take a picture.<br>Keep the <em>pad</em>.</h1>
-  <p class="lede">One photo becomes one sustained chord — its colour, texture and contrast become the harmony, the detune and the filter. Switch pictures and the pad glides across. When you find one you like, export it as a seamless loop, a one-shot and a MIDI chord you can drop into a project.</p>
+  <p class="lede">One photo becomes one sustained chord — its colour, texture and contrast become the harmony, the detune and the filter. Add up to four photos and each becomes its own layer, stacked darkest-lowest. Fine detail drives the effects: a repeating pattern becomes a repeating echo. Export any of it as a seamless loop, a one-shot and MIDI.</p>
 
   <div class="rig">
     <div>
@@ -207,6 +219,8 @@
         <span class="name" id="nametag">—</span>
         <div class="breath" id="breath"></div>
       </div>
+
+      <div class="frames" id="frames"></div>
 
       <div class="acts">
         <label class="fake" id="shootLbl">📷 Take photo<input type="file" id="shoot" accept="image/*" capture="environment"></label>
@@ -250,9 +264,9 @@
         <p class="manifest">
           <b>pad-loop.wav</b> — <span id="looplen">—</span>, seamless<br>
           <b>pad-oneshot.wav</b> — 12 s, swells in and out<br>
-          <b>pad.mid</b> — the chord as held notes<br>
+          <b>pad.mid</b> — every layer's notes, held<br>
           <b>patch.json</b> — every measurement and parameter<br>
-          <b>source.png</b> — the frame it came from
+          <b>source-*.png</b> — every frame, in layer order
         </p>
         <p class="status" id="expmsg"></p>
       </div>
@@ -262,23 +276,32 @@
   <div id="learn">
   <section>
     <h3>What the picture controls</h3>
-    <p class="note">Ten measurements, ten synth parameters, no sequencer. Only two of them quantise — the root and the chord quality — so the odds of two unrelated photos giving the same patch are vanishingly small.</p>
+    <p class="note">Fifteen measurements, no sequencer. Only two of them quantise — the root and the chord quality — so the odds of two unrelated photos giving the same patch are vanishingly small.</p>
     <div class="cols">
       <div><dl>
         <dt>Hue → root</dt><dd>Circular mean of hue, weighted by saturation, stepped round the circle of fifths at 30° per step.</dd>
         <dt>Lightness → chord quality</dt><dd>Bright to dark: maj7♯11, maj9, add9, sus2, min9, min7, min♭9. The biggest single driver of mood.</dd>
         <dt>Saturation → voice count</dt><dd>Grey gives a bare open fifth; vivid stacks all six notes. Colour is harmonic content.</dd>
         <dt>Vertical spread → voicing</dt><dd>Where the light sits in the frame decides close or open voicing across octaves.</dd>
-        <dt>Texture → detune</dt><dd>Local entropy drives the three oscillators per note apart, 2¢ glassy to 18¢ choral.</dd>
+        <dt>Texture → detune</dt><dd>Local entropy drives each note's oscillators apart, 2¢ glassy to 18¢ choral.</dd>
+        <dt>Colour purity → focus</dt><dd>A frame dominated by one hue plays fewer notes with tighter detune; a frame of many colours adds a note and drifts wider. A genuine second colour adds its own chord tone, snapped into the key so it can never be the root.</dd>
       </dl></div>
       <div><dl>
         <dt>Brightness → filter cutoff</dt><dd>One lowpass: 300 Hz at night, 7 kHz at noon.</dd>
         <dt>Contrast → resonance and swell</dt><dd>Peaky and moving, or flat and still.</dd>
         <dt>Edge density → breath rate</dt><dd>All that's left of rhythm — one filter cycle per 40 seconds down to per 4.5.</dd>
         <dt>Blur → reverb</dt><dd>Soft focus goes wet and distant; sharp stays dry and close.</dd>
-        <dt>L/R colour → stereo width</dt><dd>Frames whose halves differ in saturation sit wider.</dd>
+        <dt>Repetition → delay</dt><dd>Autocorrelation across the frame finds any regular spacing — a fence, floor tiles, a row of windows — and its spacing becomes the echo time. Measured: a 16px fence gives 284 ms, a 32px window grid 478 ms, while irregular bands score 0.08 and get no echo at all.</dd>
+        <dt>Grain → chorus</dt><dd>Fine colour disagreement between neighbouring pixels sets the ensemble depth and rate.</dd>
+        <dt>Depth → pre-delay</dt><dd>A strong top-to-bottom luminance gradient reads as distance, so the reverb's pre-delay grows and the room gets bigger.</dd>
       </dl></div>
     </div>
+  </section>
+
+  <section>
+    <h3>Four photos, one pad</h3>
+    <p class="note">Each photo becomes a layer with its own voice group, filter, breath rate and position in the stereo field. The first photo sets the key and the effects bed; every other photo's dominant hue is snapped into that key, so extra layers can only ever add consonant tones. Register order comes from the pictures themselves — sorted by lightness, so the darkest photo takes the bottom and the brightest the top.</p>
+    <p class="note">Measured on four stacked photos: 2 notes becomes 11, spread from octave 2 to octave 5, with the layer cutoffs landing at 319 Hz, 403 Hz, 1.2 kHz and 2.5 kHz and the pan spreading from −0.30 to +0.30. That is what "more detailed" means here — not a busier chord, but four independently filtered voices at four heights.</p>
   </section>
 
   <section>
@@ -318,6 +341,7 @@
 "use strict";
 var $=function(i){return document.getElementById(i);};
 var clamp=function(v){return Math.max(0,Math.min(1,v));};
+var MAXL=4;                 /* at most four photos in one pad */
 
 /* ================= scenes ================= */
 function grad(c,w,h,st){ var g=c.createLinearGradient(0,0,0,h); for(var i=0;i<st.length;i++)g.addColorStop(st[i][0],st[i][1]); c.fillStyle=g; c.fillRect(0,0,w,h); }
@@ -338,10 +362,10 @@ var SCENES=[
       c.fillRect(Math.random()*w,Math.random()*h,8+Math.random()*90,6+Math.random()*30); }
     for(var j=0;j<1400;j++){ c.fillStyle="rgba(255,255,255,"+(Math.random()*.15)+")";
       c.fillRect(Math.random()*w,Math.random()*h,2,2); } }},
- {n:"Chalk wall",draw:function(c,w,h){
-    c.fillStyle="#ded9cf"; c.fillRect(0,0,w,h);
-    for(var i=0;i<5000;i++){ var g=200+Math.random()*50;
-      c.fillStyle="rgba("+g+","+(g-4)+","+(g-12)+",.5)"; c.fillRect(Math.random()*w,Math.random()*h,3,3); } }},
+ {n:"Tiled wall",draw:function(c,w,h){   /* strongly periodic: drives the delay */
+    c.fillStyle="#cfc8bb"; c.fillRect(0,0,w,h);
+    for(var x=0;x<w;x+=w/16) for(var y=0;y<h;y+=w/16){
+      c.fillStyle="rgba(120,112,100,"+(.25+Math.random()*.1)+")"; c.fillRect(x+2,y+2,w/16-4,w/16-4); } }},
  {n:"Pine dusk",draw:function(c,w,h){
     grad(c,w,h,[[0,"#3b4a63"],[.6,"#25313f"],[1,"#101821"]]);
     for(var i=0;i<16;i++){ var x=Math.random()*w, tw=10+Math.random()*26;
@@ -360,15 +384,15 @@ function px(src,w,h){ var c=document.createElement("canvas"); c.width=w;c.height
 function hsv(r,g,b){ r/=255;g/=255;b/=255; var mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,h=0;
   if(d){ if(mx===r)h=((g-b)/d+6)%6; else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4; h/=6; }
   return [h, mx?d/mx:0, mx]; }
-
 function analyse(src){ var im=px(src,MID,MID); return analysePixels(im.data,MID,MID); }
 
-/* Pure function over RGBA bytes, so the same code can be measured outside a browser. */
+/* Pure function over RGBA bytes, so the mapping can be measured outside a browser. */
 function analysePixels(d,W,H){
   var n=W*H, i,k;
-  var sx=0,sy=0,wt=0,satS=0,satN=0,vS=0,v2S=0,rS=0,bS=0;
-  var rowL=new Float32Array(H), colSat=new Float32Array(W), lum=new Float32Array(n);
+  var sx=0,sy=0,wt=0,satS=0,satN=0,vS=0,v2S=0,rS=0,bS=0,topL=0,botL=0;
+  var rowL=new Float32Array(H), colL=new Float32Array(W), colSat=new Float32Array(W), lum=new Float32Array(n);
   var HB=24, hist=new Float32Array(HB), histX=new Float32Array(HB), histY=new Float32Array(HB);
+  var grain=0;
   for(i=0;i<n;i++){
     var o=i*4, hv=hsv(d[o],d[o+1],d[o+2]), w=hv[1]*hv[2];
     sx+=Math.cos(hv[0]*6.2831853)*w; sy+=Math.sin(hv[0]*6.2831853)*w; wt+=w;
@@ -378,19 +402,31 @@ function analysePixels(d,W,H){
     if(hv[2]>.15){ satS+=hv[1]; satN++; }
     var L=(d[o]*.2126+d[o+1]*.7152+d[o+2]*.0722)/255;
     lum[i]=L; vS+=L; v2S+=L*L; rS+=d[o]; bS+=d[o+2];
-    rowL[(i/W)|0]+=L; colSat[i%W]+=hv[1];
+    var y=(i/W)|0, x=i%W;
+    rowL[y]+=L; colL[x]+=L; colSat[x]+=hv[1];
+    if(y<H/2) topL+=L; else botL+=L;
+    /* grain: chroma disagreement with the pixel to the left, fine detail only */
+    if(x>0){ var q=(i-1)*4; grain+=(Math.abs(d[o]-d[q])+Math.abs(d[o+2]-d[q+2]))/510; }
   }
   var hue=wt>1e-6?Math.atan2(sy,sx)/6.2831853:0; if(hue<0)hue+=1;
 
-  /* dominant hue: the peak of the histogram, refined by a circular mean over
-     its two neighbours. Everyday photos have one colourful thing in a muted
-     field, and this finds that thing instead of averaging it away. */
-  var peak=0,hsum=0;
-  for(k=0;k<HB;k++){ hsum+=hist[k]; if(hist[k]>hist[peak]) peak=k; }
-  var px2=0,py2=0,pw=0;
-  for(var dk=-1;dk<=1;dk++){ var j=((peak+dk)%HB+HB)%HB; px2+=histX[j]; py2+=histY[j]; pw+=hist[j]; }
-  var hueDom=pw>1e-6?Math.atan2(py2,px2)/6.2831853:hue; if(hueDom<0)hueDom+=1;
-  var colourfulness=hsum>1e-6?pw/hsum:0;
+  /* Dominant hue = peak of the histogram, refined by a circular mean over its
+     neighbours. Then suppress that peak and its neighbours and take the next
+     one: a picture with two strong colours gets two chord tones, not one. */
+  function peakFrom(h2){
+    var pk=0,k2; for(k2=0;k2<HB;k2++) if(h2[k2]>h2[pk]) pk=k2;
+    var ax=0,ay=0,aw=0;
+    for(var dk=-1;dk<=1;dk++){ var j=((pk+dk)%HB+HB)%HB; ax+=histX[j]; ay+=histY[j]; aw+=h2[j]; }
+    var hh=aw>1e-6?Math.atan2(ay,ax)/6.2831853:0; if(hh<0)hh+=1;
+    return {bin:pk,hue:hh,weight:aw};
+  }
+  var hsum=0; for(k=0;k<HB;k++) hsum+=hist[k];
+  var p1=peakFrom(hist);
+  var rest=Float32Array.from(hist);
+  for(var dk2=-2;dk2<=2;dk2++) rest[((p1.bin+dk2)%HB+HB)%HB]=0;
+  var p2=peakFrom(rest);
+  var dominance=hsum>1e-6?p1.weight/hsum:0;
+  var hue2Share=hsum>1e-6?p2.weight/hsum:0;
 
   var mean=vS/n, contrast=Math.sqrt(Math.max(0,v2S/n-mean*mean))*2.4;
   var rm=0,rv=0;
@@ -400,167 +436,304 @@ function analysePixels(d,W,H){
   var lsat=0,rsat=0;
   for(k=0;k<W;k++){ if(k<W/2) lsat+=colSat[k]; else rsat+=colSat[k]; }
   var lr=clamp(Math.abs(lsat-rsat)/((lsat+rsat)/2+1e-6)*3);
+
+  /* Spatial rhythm: autocorrelation of the column-luminance signal. A fence, a
+     row of windows, floor tiles -- anything that repeats across the frame --
+     has a strong peak at its spacing, and that becomes the delay time. */
+  var cm=0; for(k=0;k<W;k++) cm+=colL[k]/H; cm/=W;
+  var cvar=0; for(k=0;k<W;k++){ var cd=colL[k]/H-cm; cvar+=cd*cd; }
+  var maxLag=Math.floor(W/2), ac=new Float32Array(maxLag+1);
+  var period=0, peak=-1, acSum=0, acN=0;
+  if(cvar>1e-6){
+    for(var lag=4;lag<=maxLag;lag++){
+      var acc=0;
+      for(k=0;k+lag<W;k++) acc+=(colL[k]/H-cm)*(colL[k+lag]/H-cm);
+      ac[lag]=acc/cvar;
+      acSum+=ac[lag]; acN++;
+      if(ac[lag]>peak){ peak=ac[lag]; period=lag; }
+    }
+  }
+  /* Real periodicity repeats: if `period` is the true spacing, the correlation
+     peaks again at twice it. Random speckle produces a single broad hump that
+     scores just as high on its own, so score the weaker of the two. */
+  var harm=(2*period<=maxLag)?ac[2*period]:peak*0.3;
+  var periodStrength=acN?clamp((Math.min(peak,harm)-acSum/acN)*2.6):0;
+  var periodN=period/W;                      /* 0..0.5 of the frame width */
+
   var tot=0,lap=0,cnt=0;
-  for(var y=1;y<H-1;y++) for(var x=1;x<W-1;x++){
-    var p2=y*W+x;
-    var gx=-lum[p2-W-1]-2*lum[p2-1]-lum[p2+W-1]+lum[p2-W+1]+2*lum[p2+1]+lum[p2+W+1];
-    var gy=-lum[p2-W-1]-2*lum[p2-W]-lum[p2-W+1]+lum[p2+W-1]+2*lum[p2+W]+lum[p2+W+1];
+  for(var y2=1;y2<H-1;y2++) for(var x2=1;x2<W-1;x2++){
+    var p3=y2*W+x2;
+    var gx=-lum[p3-W-1]-2*lum[p3-1]-lum[p3+W-1]+lum[p3-W+1]+2*lum[p3+1]+lum[p3+W+1];
+    var gy=-lum[p3-W-1]-2*lum[p3-W]-lum[p3-W+1]+lum[p3+W-1]+2*lum[p3+W]+lum[p3+W+1];
     tot+=Math.hypot(gx,gy);
-    lap+=Math.abs(4*lum[p2]-lum[p2-1]-lum[p2+1]-lum[p2-W]-lum[p2+W]); cnt++;
+    lap+=Math.abs(4*lum[p3]-lum[p3-1]-lum[p3+1]-lum[p3-W]-lum[p3+W]); cnt++;
   }
   var ent=0,tiles=0;
   for(var ty=0;ty+8<=H;ty+=8) for(var tx=0;tx+8<=W;tx+=8){
-    var hh=new Uint8Array(16);
-    for(var yy=0;yy<8;yy++) for(var xx=0;xx<8;xx++) hh[Math.min(15,(lum[(ty+yy)*W+tx+xx]*16)|0)]++;
-    var e=0; for(k=0;k<16;k++) if(hh[k]){ var pr=hh[k]/64; e-=pr*Math.log2(pr); }
+    var hh2=new Uint8Array(16);
+    for(var yy=0;yy<8;yy++) for(var xx=0;xx<8;xx++) hh2[Math.min(15,(lum[(ty+yy)*W+tx+xx]*16)|0)]++;
+    var e=0; for(k=0;k<16;k++) if(hh2[k]){ var pr=hh2[k]/64; e-=pr*Math.log2(pr); }
     ent+=e/4; tiles++;
   }
-  return { hue:hue, hueDom:hueDom, colourfulness:colourfulness,
+  return { hue:hue, hueDom:p1.hue, hue2:p2.hue, hue2Share:hue2Share, colourfulness:dominance,
+    dominance:dominance,
     sat:satN?satS/satN:0, light:mean, contrast:clamp(contrast),
     density:clamp(tot/cnt*1.6), sharp:clamp(lap/cnt*6), entropy:clamp(ent/tiles),
-    vspread:vspread, width:lr, warmth:clamp(((rS-bS)/(rS+bS+1e-6))*2+.5) };
+    vspread:vspread, width:lr, warmth:clamp(((rS-bS)/(rS+bS+1e-6))*2+.5),
+    grain:clamp(grain/n*6), depth:clamp(Math.abs(topL-botL)/(n/2)*1.4),
+    period:periodN, periodStrength:periodStrength };
 }
 
-/* ================= patch ================= */
-var FIFTHS=[0,7,2,9,4,11,6,1,8,3,10,5];
-var NAMES=["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
-var PRETTY=["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
-var QUALITIES=[
-  {n:"maj7♯11",f:"maj7s11",iv:[0,7,11,16,18,23]},
-  {n:"maj9",   f:"maj9",   iv:[0,7,11,14,16,21]},
-  {n:"add9",   f:"add9",   iv:[0,7,12,14,16,19]},
-  {n:"sus2",   f:"sus2",   iv:[0,7,12,14,19,24]},
-  {n:"min9",   f:"min9",   iv:[0,7,10,14,15,19]},
-  {n:"min7",   f:"min7",   iv:[0,7,10,12,15,19]},
-  {n:"min♭9",  f:"minb9",  iv:[0,7,10,13,15,20]}
-];
-/* CALIBRATION.
-   Raw features are not uniformly distributed over [0,1] — real photographs
-   cluster hard in the middle-low part of every scale (measured: saturation
-   0.02–0.37, edge density 0.10–0.28, entropy 0.00–0.32 across twelve ordinary
-   indoor/street scenes). Feeding those straight into the mapping wastes most
-   of the musical range on images nobody takes.
-   Each feature passes through a logistic centred on the everyday median, with
-   a slope that stretches the crowded middle. It never saturates, so genuinely
-   extreme images still separate at the ends. */
+/* ================= calibration ================= */
+/* Raw features are not uniform over [0,1] -- real photographs cluster in the
+   middle-low part of every scale (measured: saturation 0.02-0.37, edge density
+   0.10-0.28 over twelve ordinary scenes). Each passes through a logistic
+   centred on the everyday median; it stretches the crowded middle and never
+   fully saturates, so extremes still separate. */
 var CAL={ light:[0.57,7.5], sat:[0.17,11], contrast:[0.30,6.5], density:[0.16,15],
           entropy:[0.15,12], sharp:[0.38,6], vspread:[0.30,8], width:[0.20,11],
-          warmth:[0.60,9] };
+          warmth:[0.60,9], grain:[0.14,12], depth:[0.10,14], dominance:[0.82,11] };
 function sig(v,mid,k){ return 1/(1+Math.exp(-k*(v-mid))); }
 function calib(f){
   var c={},k;
-  for(k in CAL) c[k]=sig(f[k],CAL[k][0],CAL[k][1]);
-  c.hue=f.hue; c.hueDom=f.hueDom; c.colourfulness=f.colourfulness;
+  for(k in CAL) c[k]=sig(f[k]===undefined?0:f[k],CAL[k][0],CAL[k][1]);
+  c.hue=f.hue; c.hueDom=f.hueDom; c.hue2=f.hue2; c.hue2Share=f.hue2Share;
+  c.period=f.period; c.periodStrength=f.periodStrength;
   return c;
 }
-function patchOf(f){
-  var c=calib(f);
-  /* Root comes from the dominant hue, not the global mean: one colourful
-     object should pick the key instead of being averaged into the wall behind
-     it. Near-grey frames have no dominant hue worth trusting, so they fall
-     back to a stable combination of warm/cool balance and the weak mean. */
-  var grey=f.colourfulness<0.22 || f.sat<0.07;
-  var hueSrc = grey ? ((f.warmth*1.9+f.hue*0.55)%1+1)%1 : f.hueDom;
-  var root=FIFTHS[Math.round(hueSrc*12)%12];
-  /* Quality on two axes rather than one: darkness pulls toward minor, coolness
-     pulls further. Warm dark (candlelight) should not be as bleak as cold dark
-     (night street), and this also stops lightness from driving three
-     parameters at once. */
-  /* A weighted mean of two mid-range numbers regresses to the middle, so the
-     combination gets its own expansion before it picks a chord. */
+
+/* ================= harmony ================= */
+var FIFTHS=[0,7,2,9,4,11,6,1,8,3,10,5];
+var PRETTY=["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+var QUALITIES=[
+  {n:"maj7♯11",f:"maj7s11",iv:[0,7,11,16,18,23],sc:[0,2,4,6,7,9,11]},
+  {n:"maj9",   f:"maj9",   iv:[0,7,11,14,16,21],sc:[0,2,4,5,7,9,11]},
+  {n:"add9",   f:"add9",   iv:[0,7,12,14,16,19],sc:[0,2,4,5,7,9,11]},
+  {n:"sus2",   f:"sus2",   iv:[0,7,12,14,19,24],sc:[0,2,5,7,9,10]},
+  {n:"min9",   f:"min9",   iv:[0,7,10,14,15,19],sc:[0,2,3,5,7,9,10]},
+  {n:"min7",   f:"min7",   iv:[0,7,10,12,15,19],sc:[0,2,3,5,7,8,10]},
+  {n:"min♭9",  f:"minb9",  iv:[0,7,10,13,15,20],sc:[0,1,3,5,7,8,10]}
+];
+function rootOf(f){
+  /* One colourful object should pick the key instead of being averaged into
+     the wall behind it. Near-grey frames have no dominant hue worth trusting,
+     so they fall back to warm/cool balance, which is stable across angles. */
+  var grey=f.dominance<0.22 || f.sat<0.07;
+  var h=grey ? ((f.warmth*1.9+f.hue*0.55)%1+1)%1 : f.hueDom;
+  return { pc:FIFTHS[Math.round(h*12)%12], grey:grey };
+}
+function qualityOf(c){
+  /* Two axes: darkness pulls toward minor, coolness pulls further, so warm
+     dark and cold dark part company. A weighted mean of two mid-range numbers
+     regresses to the middle, so the combination gets its own expansion. */
   var dark=(1-c.light)*0.68+(1-c.warmth)*0.32;
-  var qi=Math.round(sig(dark,0.49,9.5)*6);
-  var q=QUALITIES[Math.max(0,Math.min(6,qi))];
-  var voices=c.sat<.17?2:c.sat<.34?3:c.sat<.55?4:c.sat<.76?5:6;
-  var octave=2+Math.round(c.light*2), spread=c.vspread, midi=[];
-  for(var i=0;i<voices;i++){
-    var lift=(i>=3&&spread>0.5)?12:0;
-    midi.push(12*(octave+1)+root+q.iv[i]+lift);
+  return QUALITIES[Math.max(0,Math.min(6,Math.round(sig(dark,0.49,9.5)*6)))];
+}
+/* snap any pitch class into the primary chord's scale, so extra layers and
+   second colours stay consonant no matter what they were photographed from */
+function snap(pc,rootPc,scale,notRoot){
+  var rel=((pc-rootPc)%12+12)%12, best=null, bd=99;
+  for(var i=0;i<scale.length;i++){
+    if(notRoot && scale[i]===0) continue;     /* a second colour is never the root */
+    var d=Math.min(Math.abs(scale[i]-rel),12-Math.abs(scale[i]-rel));
+    if(d<bd){ bd=d; best=scale[i]; }
   }
-  return { root:root, rootName:PRETTY[root], quality:q.n, qfile:q.f, midi:midi, voices:voices, octave:octave,
-    detune:2+c.entropy*16,
-    cutoff:300*Math.pow(23,Math.pow(c.light,1.15)),
-    q:0.6+c.contrast*7,
-    lfoRate:0.025+c.density*0.22,
-    lfoDepth:0.25+c.contrast*0.65,
-    wet:clamp(0.18+(1-c.sharp)*0.62),
-    width:0.25+c.width*0.6,
-    warmth:f.warmth,
-    air:Math.pow(c.entropy,1.6)*0.9,
-    grey:grey,
-    c:c, f:f };
+  return best===null?scale[0]:best;
+}
+
+/* ================= patch ================= */
+/* One layer per photo. The first photo sets key, quality and the effects
+   bed; each further photo adds a voice group whose root is its own dominant
+   hue snapped into that key, sitting at a register set by its lightness. */
+function buildPatch(frames){
+  var base=frames[0], bc=calib(base), br=rootOf(base), q=qualityOf(bc);
+  var layers=[], i;
+  /* darkest photo lowest: register order comes from the pictures themselves */
+  var order=frames.map(function(f,ix){ return {f:f,ix:ix}; })
+                  .sort(function(a,b){ return a.f.light-b.f.light; });
+
+  for(i=0;i<frames.length;i++){
+    var o=order[i], f=o.f, c=calib(f), r=rootOf(f);
+    var pc = i===0 ? br.pc : (br.pc+snap(r.pc,br.pc,q.sc))%12;
+    /* dominance: one strong colour -> purer and narrower; many colours ->
+       one more note and wider drift */
+    var dom=c.dominance;
+    var base_v = f.sat<.10?2 : c.sat<.34?2 : c.sat<.62?3 : 4;
+    var voices=Math.max(2,Math.min(4, base_v + (dom>0.62?-1:dom<0.34?1:0) ));
+    var octave = 2 + i + Math.round(c.light*0.6);
+    var notes=[], k;
+    for(k=0;k<voices;k++) notes.push(12*(octave+1)+pc+q.iv[k]);
+    /* a genuine second colour adds its own tone to that layer */
+    var second=null;
+    if(f.hue2Share>0.16 && !r.grey){
+      var pc2=(br.pc+snap(FIFTHS[Math.round(f.hue2*12)%12],br.pc,q.sc,true))%12;
+      if(pc2!==pc){ second=12*(octave+2)+pc2; notes.push(second); }
+    }
+    layers.push({
+      pc:pc, notes:notes, voices:notes.length, octave:octave, second:second,
+      detune:(2+c.entropy*16)*(1.3-dom*0.55),
+      cutoff:300*Math.pow(23,Math.pow(c.light,1.15)),
+      q:0.6+c.contrast*7,
+      lfoRate:0.025+c.density*0.22,
+      lfoDepth:0.25+c.contrast*0.65,
+      pan:(frames.length===1?0:(i/(Math.max(1,frames.length-1))*2-1)*(0.25+c.width*0.5)),
+      gain: i===0?1:0.78-i*0.06,
+      wave: c.warmth>.62?"sawtooth":c.warmth>.38?"triangle":"sine",
+      grey:r.grey, dom:dom, c:c, f:f
+    });
+  }
+
+  /* Effects come from fine detail, and from whichever photo carries it most. */
+  var byPeriod=frames.slice().sort(function(a,b){ return b.periodStrength-a.periodStrength; })[0];
+  var mean=function(k){ var s=0; for(var j=0;j<frames.length;j++) s+=calib(frames[j])[k]; return s/frames.length; };
+  var fx={
+    /* a repeating pattern in the picture becomes a repeating echo */
+    delayTime: 0.09+byPeriod.period*1.55,
+    delayFeedback: clamp((byPeriod.periodStrength-0.42)*1.15),
+    delayMix: clamp((byPeriod.periodStrength-0.42)*0.95),
+    /* fine colour noise -> ensemble movement */
+    chorusDepth: 0.0012+mean("grain")*0.006,
+    chorusRate: 0.15+mean("grain")*0.75,
+    /* a strong top-to-bottom gradient reads as depth -> the room gets bigger */
+    preDelay: 0.005+mean("depth")*0.085,
+    wet: clamp(0.18+(1-mean("sharp"))*0.62),
+    air: Math.pow(mean("entropy"),1.6)*0.9
+  };
+  return { rootName:PRETTY[br.pc], root:br.pc, quality:q.n, qfile:q.f, scale:q.sc,
+    layers:layers, fx:fx, frames:frames, c:bc, f:base, grey:br.grey };
+}
+function allNotes(p){
+  var out=[],i,j,t=state.transpose;
+  for(i=0;i<p.layers.length;i++) for(j=0;j<p.layers[i].notes.length;j++) out.push(p.layers[i].notes[j]+t);
+  return out;
 }
 var hz=function(m){ return 440*Math.pow(2,(m-69)/12); };
-function notesOf(p){ var t=state.transpose; return p.midi.map(function(m){ return m+t; }); }
-function waveOf(p){ return p.warmth>.62?"sawtooth":p.warmth>.38?"triangle":"sine"; }
 
-/* ================= shared graph ================= */
+/* ================= graph ================= */
 /* Built identically for the live context and the offline render, so what you
-   export is what you heard. `live` decides ramps vs fixed values. */
+   export is what you heard. Fixed shape: MAXL layers x 5 slots, unused silent. */
+var SLOTS=5;
 function impulse(ctx,sec,decay){
   var L=Math.floor(ctx.sampleRate*sec), b=ctx.createBuffer(2,L,ctx.sampleRate);
   for(var ch=0;ch<2;ch++){ var d=b.getChannelData(ch);
     for(var i=0;i<L;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/L,decay); }
   return b;
 }
-var SLOTS=6;
 function graph(ctx){
   var out=ctx.createGain(); out.gain.value=0;
-  var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-16; comp.ratio.value=5;
+  var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-17; comp.ratio.value=5;
   out.connect(comp); comp.connect(ctx.destination);
-  var dry=ctx.createGain(), wet=ctx.createGain(), rev=ctx.createConvolver();
-  rev.buffer=impulse(ctx,4.2,3.1); dry.connect(out); wet.connect(rev); rev.connect(out);
-  var filt=ctx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=1200; filt.Q.value=1;
-  filt.connect(dry); filt.connect(wet);
-  var lfo=ctx.createOscillator(); lfo.type="sine"; lfo.frequency.value=.06;
-  var lfoAmt=ctx.createGain(); lfoAmt.gain.value=400;
-  lfo.connect(lfoAmt); lfoAmt.connect(filt.frequency); lfo.start();
+
+  var bus=ctx.createGain(); bus.gain.value=1;
+
+  /* chorus: two short modulated delays, opposed, for ensemble width */
+  var chA=ctx.createDelay(0.05), chB=ctx.createDelay(0.05);
+  chA.delayTime.value=0.012; chB.delayTime.value=0.019;
+  var chPanA=ctx.createStereoPanner(), chPanB=ctx.createStereoPanner();
+  chPanA.pan.value=-0.6; chPanB.pan.value=0.6;
+  var chLfo=ctx.createOscillator(); chLfo.type="sine"; chLfo.frequency.value=0.3;
+  var chAmtA=ctx.createGain(), chAmtB=ctx.createGain();
+  chAmtA.gain.value=0.002; chAmtB.gain.value=-0.002;
+  chLfo.connect(chAmtA); chAmtA.connect(chA.delayTime);
+  chLfo.connect(chAmtB); chAmtB.connect(chB.delayTime);
+  chLfo.start();
+  var chMix=ctx.createGain(); chMix.gain.value=0.5;
+  bus.connect(chA); chA.connect(chPanA); chPanA.connect(chMix);
+  bus.connect(chB); chB.connect(chPanB); chPanB.connect(chMix);
+
+  /* feedback delay, damped so repeats darken instead of piling up */
+  var dly=ctx.createDelay(2.0); dly.delayTime.value=0.3;
+  var fb=ctx.createGain(); fb.gain.value=0;
+  var damp=ctx.createBiquadFilter(); damp.type="lowpass"; damp.frequency.value=2600;
+  var dlyMix=ctx.createGain(); dlyMix.gain.value=0;
+  bus.connect(dly); chMix.connect(dly);
+  dly.connect(damp); damp.connect(fb); fb.connect(dly);
+  dly.connect(dlyMix);
+
+  var pre=ctx.createDelay(0.25); pre.delayTime.value=0.02;
+  var rev=ctx.createConvolver(); rev.buffer=impulse(ctx,4.2,3.1);
+  var wet=ctx.createGain(), dry=ctx.createGain();
+  bus.connect(dry); chMix.connect(dry); dlyMix.connect(dry);
+  bus.connect(pre); chMix.connect(pre); dlyMix.connect(pre);
+  pre.connect(rev); rev.connect(wet);
+  dry.connect(out); wet.connect(out);
+
   var nb=ctx.createBuffer(1,Math.floor(ctx.sampleRate*3),ctx.sampleRate), nd=nb.getChannelData(0);
   for(var j=0;j<nd.length;j++) nd[j]=Math.random()*2-1;
   var noise=ctx.createBufferSource(); noise.buffer=nb; noise.loop=true;
   var nhp=ctx.createBiquadFilter(); nhp.type="highpass"; nhp.frequency.value=2200;
   var ngain=ctx.createGain(); ngain.gain.value=0;
-  noise.connect(nhp); nhp.connect(ngain); ngain.connect(filt); noise.start();
-  var slots=[];
-  for(var s=0;s<SLOTS;s++){
-    var g=ctx.createGain(); g.gain.value=0;
-    var pan=ctx.createStereoPanner(); pan.pan.value=0;
-    g.connect(pan); pan.connect(filt);
-    var oscs=[];
-    for(var o=0;o<3;o++){
-      var osc=ctx.createOscillator(); osc.type="sawtooth"; osc.frequency.value=110;
-      osc.detune.value=(o-1)*6;
-      var og=ctx.createGain(); og.gain.value=.33;
-      osc.connect(og); og.connect(g); osc.start();
-      oscs.push(osc);
-    }
-    slots.push({g:g,pan:pan,oscs:oscs});
-  }
-  return {ctx:ctx,out:out,dry:dry,wet:wet,filt:filt,lfo:lfo,lfoAmt:lfoAmt,ngain:ngain,slots:slots};
-}
-function slotLevel(p,s){ return (0.16/Math.max(1,p.voices*0.42))*(1-s*0.09); }
+  noise.connect(nhp); nhp.connect(ngain); ngain.connect(bus); noise.start();
 
-function applyTo(G,p,notes,glide){
-  var ctx=G.ctx, t=ctx.currentTime, T=glide/3, set=function(param,v){
-    if(glide<=0) param.value=v; else param.setTargetAtTime(v,t,T);
-  };
-  for(var s=0;s<SLOTS;s++){
-    var sl=G.slots[s], on=s<p.voices, f=on?hz(notes[s]):hz(notes[0]||60);
-    for(var o=0;o<3;o++){
-      set(sl.oscs[o].frequency,f);
-      set(sl.oscs[o].detune,(o-1)*p.detune);
-      sl.oscs[o].type=waveOf(p);
+  var layers=[];
+  for(var L=0;L<MAXL;L++){
+    var lg=ctx.createGain(); lg.gain.value=0;
+    var lf=ctx.createBiquadFilter(); lf.type="lowpass"; lf.frequency.value=1200; lf.Q.value=1;
+    var lp=ctx.createStereoPanner(); lp.pan.value=0;
+    lg.connect(lf); lf.connect(lp); lp.connect(bus);
+    var lfo=ctx.createOscillator(); lfo.type="sine"; lfo.frequency.value=0.06;
+    var lfoAmt=ctx.createGain(); lfoAmt.gain.value=300;
+    lfo.connect(lfoAmt); lfoAmt.connect(lf.frequency); lfo.start();
+    var slots=[];
+    for(var s=0;s<SLOTS;s++){
+      var g=ctx.createGain(); g.gain.value=0;
+      g.connect(lg);
+      var oscs=[];
+      for(var o=0;o<2;o++){
+        var osc=ctx.createOscillator(); osc.type="sawtooth"; osc.frequency.value=110;
+        osc.detune.value=(o?1:-1)*6;
+        var og=ctx.createGain(); og.gain.value=.5;
+        osc.connect(og); og.connect(g); osc.start();
+        oscs.push(osc);
+      }
+      slots.push({g:g,oscs:oscs});
     }
-    set(sl.g.gain,on?slotLevel(p,s):0);
-    set(sl.pan.pan,(s/(SLOTS-1)*2-1)*p.width);
+    layers.push({g:lg,filt:lf,pan:lp,lfo:lfo,lfoAmt:lfoAmt,slots:slots});
   }
-  set(G.filt.frequency,p.cutoff);
-  set(G.filt.Q,p.q);
-  set(G.lfo.frequency,p.lfoRate);
-  set(G.lfoAmt.gain,p.cutoff*0.55*p.lfoDepth);
-  set(G.wet.gain,p.wet);
-  set(G.dry.gain,1-p.wet*0.45);
-  set(G.ngain.gain,p.air*0.012);
+  return {ctx:ctx,out:out,bus:bus,dry:dry,wet:wet,pre:pre,dly:dly,fb:fb,dlyMix:dlyMix,
+    chMix:chMix,chAmtA:chAmtA,chAmtB:chAmtB,chLfo:chLfo,ngain:ngain,layers:layers};
+}
+
+function applyTo(G,p,glide){
+  var ctx=G.ctx, t=ctx.currentTime, T=Math.max(0.001,glide/3);
+  var set=function(param,v){ if(glide<=0) param.value=v; else param.setTargetAtTime(v,t,T); };
+  var tr=state.transpose, L,s,o;
+  for(L=0;L<MAXL;L++){
+    var lay=G.layers[L], src=p.layers[L], on=!!src;
+    if(on){
+      for(s=0;s<SLOTS;s++){
+        var slot=lay.slots[s], has=s<src.notes.length;
+        var f=hz((has?src.notes[s]:src.notes[0])+tr);
+        for(o=0;o<2;o++){
+          set(slot.oscs[o].frequency,f);
+          set(slot.oscs[o].detune,(o?1:-1)*src.detune);
+          slot.oscs[o].type=src.wave;
+        }
+        /* upper notes quieter, so a stack stays a pad and not a pipe organ */
+        set(slot.g.gain, has ? (0.17/Math.max(1,src.notes.length*0.5))*(1-s*0.10) : 0);
+      }
+      set(lay.g.gain,src.gain);
+      set(lay.filt.frequency,src.cutoff);
+      set(lay.filt.Q,src.q);
+      set(lay.pan.pan,src.pan);
+      set(lay.lfo.frequency,src.lfoRate);
+      set(lay.lfoAmt.gain,src.cutoff*0.5*src.lfoDepth);
+    } else {
+      set(lay.g.gain,0);
+    }
+  }
+  var fx=p.fx;
+  set(G.dly.delayTime,fx.delayTime);
+  set(G.fb.gain,fx.delayFeedback);
+  set(G.dlyMix.gain,fx.delayMix);
+  set(G.chAmtA.gain,fx.chorusDepth);
+  set(G.chAmtB.gain,-fx.chorusDepth);
+  set(G.chLfo.frequency,fx.chorusRate);
+  set(G.chMix.gain,0.34+fx.chorusDepth*40);
+  set(G.pre.delayTime,fx.preDelay);
+  set(G.wet.gain,fx.wet);
+  set(G.dry.gain,1-fx.wet*0.42);
+  set(G.ngain.gain,fx.air*0.012);
 }
 
 /* ================= live ================= */
@@ -569,24 +742,23 @@ function live(){ if(!A) A=graph(new (window.AudioContext||window.webkitAudioCont
 
 /* ================= offline render ================= */
 function loopSeconds(p){
-  var cycle=1/p.lfoRate;                       /* one filter breath */
-  var cycles=Math.max(1,Math.round(12/cycle)); /* aim near 12 s, land on a whole cycle */
-  var dur=cycles*cycle;
-  while(dur<6){ cycles++; dur=cycles*cycle; }
-  return Math.min(dur,34);
+  var slow=p.layers[0].lfoRate;                 /* the primary layer's breath */
+  var cycle=1/slow, cycles=Math.max(1,Math.round(14/cycle)), dur=cycles*cycle;
+  while(dur<8){ cycles++; dur=cycles*cycle; }
+  return Math.min(dur,36);
 }
-function render(p,notes,dur,tail,shape){
+function render(p,dur,tail,shape){
   var sr=44100, total=Math.ceil((dur+tail)*sr);
   var ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2,total,sr);
   var G=graph(ctx);
-  applyTo(G,p,notes,0);
+  applyTo(G,p,0);
   if(shape==="oneshot"){
     G.out.gain.setValueAtTime(0,0);
-    G.out.gain.linearRampToValueAtTime(0.85,2.2);
-    G.out.gain.setValueAtTime(0.85,dur-3.4);
+    G.out.gain.linearRampToValueAtTime(0.85,2.4);
+    G.out.gain.setValueAtTime(0.85,dur-3.6);
     G.out.gain.linearRampToValueAtTime(0.0001,dur);
   } else {
-    G.out.gain.setValueAtTime(0.85,0);        /* flat: the seam is handled by the crossfade */
+    G.out.gain.setValueAtTime(0.85,0);   /* flat: the seam is the crossfade's job */
   }
   return ctx.startRendering();
 }
@@ -596,17 +768,13 @@ function seamless(buf,dur,tail){
   for(var ch=0;ch<2;ch++){
     var src=buf.getChannelData(Math.min(ch,buf.numberOfChannels-1)), a=new Float32Array(n);
     a.set(src.subarray(0,n));
-    for(var i=0;i<x;i++){
-      var w=Math.sqrt(i/x), v=Math.sqrt(1-i/x);
-      a[i]=a[i]*w+src[n+i]*v;
-    }
+    for(var i=0;i<x;i++){ var w=Math.sqrt(i/x); a[i]=a[i]*w+src[n+i]*Math.sqrt(1-i/x); }
     out.push(a);
   }
   return out;
 }
 function bufToChannels(buf){
-  var out=[];
-  for(var ch=0;ch<2;ch++) out.push(buf.getChannelData(Math.min(ch,buf.numberOfChannels-1)).slice(0));
+  var out=[]; for(var ch=0;ch<2;ch++) out.push(buf.getChannelData(Math.min(ch,buf.numberOfChannels-1)).slice(0));
   return out;
 }
 function normalise(chs,peak){
@@ -629,11 +797,11 @@ function wav(chs,sr){
   }
   return new Uint8Array(b);
 }
-/* type-0 MIDI: the chord, held */
+/* type-0 MIDI: every layer's notes, held */
 function midiFile(notes,beats){
   var trk=[], i;
   function vlq(n){ var out=[n&0x7f]; n>>=7; while(n){ out.unshift((n&0x7f)|0x80); n>>=7; } return out; }
-  trk=trk.concat([0,0xFF,0x51,3,0x07,0xA1,0x20]);          /* 500000 us/qn = 120 bpm */
+  trk=trk.concat([0,0xFF,0x51,3,0x07,0xA1,0x20]);        /* 500000 us/qn = 120 bpm */
   for(i=0;i<notes.length;i++) trk=trk.concat([0,0x90,notes[i]&0x7f,i===0?0x64:0x58]);
   var ticks=Math.round(beats*480);
   for(i=0;i<notes.length;i++) trk=trk.concat(i===0?vlq(ticks):[0],[0x80,notes[i]&0x7f,0x40]);
@@ -670,45 +838,51 @@ function zip(files){
   u32(end,cdSize); u32(end,offset); u16(end,0);
   return new Blob(parts.concat(central,[new Uint8Array(end)]),{type:"application/zip"});
 }
-
 function slug(s){ return (s||"pad").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,28)||"pad"; }
 
 function doExport(){
   var p=state.patch; if(!p) return;
   var btn=$("exp"), msg=$("expmsg");
   btn.disabled=true; msg.className="status"; msg.textContent="Rendering loop…";
-  var notes=notesOf(p), dur=loopSeconds(p), tail=0.35;
-  render(p,notes,dur,tail,"loop").then(function(buf){
+  var notes=allNotes(p), dur=loopSeconds(p), tail=0.6;
+  render(p,dur,tail,"loop").then(function(buf){
     var loop=seamless(buf,dur,tail); normalise(loop,0.89);
     msg.textContent="Rendering one-shot…";
-    return render(p,notes,12,1.2,"oneshot").then(function(b2){
+    return render(p,14,1.6,"oneshot").then(function(b2){
       var one=bufToChannels(b2); normalise(one,0.89);
       msg.textContent="Packing…";
-      var name=slug(state.label), enc=new TextEncoder();
+      var name=slug(state.frames.map(function(fr){return fr.label;}).join("-")), enc=new TextEncoder();
       var meta={
-        source:state.label, generator:"image-music pad mode",
+        generator:"image-music pad mode", sources:state.frames.map(function(fr){return fr.label;}),
         chord:p.rootName+" "+p.quality, transpose:state.transpose,
         midiNotes:notes, loopSeconds:+dur.toFixed(3),
-        synth:{ voices:p.voices, waveform:waveOf(p), detuneCents:+p.detune.toFixed(2),
-          cutoffHz:Math.round(p.cutoff), resonanceQ:+p.q.toFixed(2),
-          lfoRateHz:+p.lfoRate.toFixed(4), lfoDepth:+p.lfoDepth.toFixed(3),
-          reverbWet:+p.wet.toFixed(3), stereoWidth:+p.width.toFixed(3), airGain:+p.air.toFixed(3) },
-        measurements:p.f
+        layers:p.layers.map(function(l,i){ return {
+          index:i, source:state.frames[i]?state.frames[i].label:null,
+          pitchClass:PRETTY[l.pc], notes:l.notes, octave:l.octave,
+          detuneCents:+l.detune.toFixed(2), cutoffHz:Math.round(l.cutoff),
+          resonanceQ:+l.q.toFixed(2), lfoRateHz:+l.lfoRate.toFixed(4),
+          pan:+l.pan.toFixed(2), waveform:l.wave,
+          colourDominance:+l.dom.toFixed(3), secondColourTone:l.second };
+        }),
+        effects:{ delaySeconds:+p.fx.delayTime.toFixed(3), delayFeedback:+p.fx.delayFeedback.toFixed(3),
+          delayMix:+p.fx.delayMix.toFixed(3), chorusDepth:+p.fx.chorusDepth.toFixed(5),
+          chorusRateHz:+p.fx.chorusRate.toFixed(3), reverbPreDelay:+p.fx.preDelay.toFixed(4),
+          reverbWet:+p.fx.wet.toFixed(3) },
+        measurements:p.frames
       };
       var readme=
         "PAD KIT — image-music\n\n"+
-        "source image : "+state.label+"\n"+
+        "sources      : "+state.frames.map(function(fr){return fr.label;}).join(", ")+"\n"+
+        "layers       : "+p.layers.length+"\n"+
         "chord        : "+p.rootName+" "+p.quality+(state.transpose?"  (transposed "+(state.transpose>0?"+":"")+state.transpose+" st)":"")+"\n"+
-        "loop length  : "+dur.toFixed(2)+" s = "+Math.round(dur*p.lfoRate)+" filter cycles\n\n"+
+        "loop length  : "+dur.toFixed(2)+" s\n"+
+        "delay        : "+Math.round(p.fx.delayTime*1000)+" ms, feedback "+Math.round(p.fx.delayFeedback*100)+"%\n\n"+
         "pad-loop.wav     seamless; cross-faded at the seam. Loop it as a bed.\n"+
-        "pad-oneshot.wav  12 s with a swell in and out. Good for one-hit use.\n"+
-        "pad.mid          the same chord as held notes, 120 bpm, "+(dur.toFixed(1))+"s long.\n"+
-        "                 Re-voice it with your own instrument to keep the harmony\n"+
-        "                 and drop the texture.\n"+
-        "patch.json       every measurement taken from the image and every synth\n"+
-        "                 parameter derived from it.\n"+
-        "source.png       the frame this came from.\n\n"+
-        "Tip: use the loop for texture and the MIDI an octave down for weight.\n";
+        "pad-oneshot.wav  14 s with a swell in and out.\n"+
+        "pad.mid          every layer's notes as held notes, 120 bpm.\n"+
+        "patch.json       per-layer parameters, effects, and the raw measurements\n"+
+        "                 each photo contributed.\n"+
+        "source-*.png     the frames this came from, in layer order.\n";
       var files=[
         {name:name+"/pad-loop.wav",data:wav(loop,44100)},
         {name:name+"/pad-oneshot.wav",data:wav(one,44100)},
@@ -716,8 +890,8 @@ function doExport(){
         {name:name+"/patch.json",data:enc.encode(JSON.stringify(meta,null,2))},
         {name:name+"/README.txt",data:enc.encode(readme)}
       ];
-      return pngBytes().then(function(png){
-        if(png) files.push({name:name+"/source.png",data:png});
+      return Promise.all(state.frames.map(function(fr,i){ return pngOf(fr.canvas,i); })).then(function(pngs){
+        pngs.forEach(function(png,i){ if(png) files.push({name:name+"/source-"+(i+1)+".png",data:png}); });
         return deliver(zip(files),name+"-pad-kit.zip");
       });
     });
@@ -730,9 +904,10 @@ function doExport(){
     btn.disabled=false;
   });
 }
-function pngBytes(){
+function pngOf(cv){
   return new Promise(function(res){
-    work.toBlob(function(b){
+    if(!cv){ res(null); return; }
+    cv.toBlob(function(b){
       if(!b){ res(null); return; }
       b.arrayBuffer().then(function(ab){ res(new Uint8Array(ab)); }).catch(function(){ res(null); });
     },"image/png");
@@ -751,19 +926,19 @@ function deliver(blob,filename){
 }
 
 /* ================= saved pads ================= */
-var LS="imagemusic.pads.v1";
+var LS="imagemusic.pads.v2";
 function loadSaved(){ try{ return JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ return []; } }
-function putSaved(list){ try{ localStorage.setItem(LS,JSON.stringify(list.slice(0,18))); }catch(e){} }
+function putSaved(list){ try{ localStorage.setItem(LS,JSON.stringify(list.slice(0,14))); }catch(e){} }
 function savePad(){
-  if(!state.patch) return;
-  var ar=work.width/work.height, tw=Math.round(ar>=1?170:170*ar), th=Math.round(ar>=1?170/ar:170);
-  var thumb=document.createElement("canvas"); thumb.width=tw; thumb.height=th;
-  thumb.getContext("2d").drawImage(work,0,0,tw,th);
+  if(!state.patch||!state.frames.length) return;
   var list=loadSaved();
-  list.unshift({ label:state.label, chord:state.patch.rootName+" "+state.patch.quality,
-    thumb:thumb.toDataURL("image/jpeg",0.72), w:tw, h:th, f:state.patch.f, at:Date.now() });
+  list.unshift({ label:state.frames.map(function(f){return f.label;}).join(" + ").slice(0,40),
+    chord:state.patch.rootName+" "+state.patch.quality,
+    thumb:state.frames[0].thumb, w:state.frames[0].tw, h:state.frames[0].th,
+    fs:state.frames.map(function(f){return f.f;}), at:Date.now() });
   putSaved(list); renderSaved();
-  $("savedmsg").textContent="Saved “"+state.label+"” — "+state.patch.rootName+" "+state.patch.quality+".";
+  $("savedmsg").textContent="Saved — "+state.patch.rootName+" "+state.patch.quality+
+    " from "+state.frames.length+" photo"+(state.frames.length===1?"":"s")+".";
 }
 function renderSaved(){
   var list=loadSaved(), box=$("saved"); box.innerHTML="";
@@ -773,23 +948,34 @@ function renderSaved(){
     var b=document.createElement("button");
     var img=new Image(); img.src=item.thumb; img.alt=item.label; b.appendChild(img);
     var cap=document.createElement("div"); cap.className="cap"; cap.textContent=item.chord; b.appendChild(cap);
-    b.addEventListener("click",function(){
-      var im=new Image();
-      im.onload=function(){
-        frameFor(item.w||150,item.h||94);
-        drawTo(function(c,w,h){ c.drawImage(im,0,0,w,h); }, item.label, item.f);
-      };
-      im.src=item.thumb;
-    });
+    b.addEventListener("click",function(){ recall(item); });
     box.appendChild(b);
   });
   $("savedmsg").textContent=list.length+" saved · tap one to recall it";
+}
+function recall(item){
+  var im=new Image();
+  im.onload=function(){
+    state.frames=[{ label:item.label, f:item.fs[0], thumb:item.thumb, tw:item.w, th:item.h,
+      canvas:canvasOf(im,item.w,item.h) }];
+    for(var i=1;i<item.fs.length;i++)
+      state.frames.push({ label:item.label+" ("+(i+1)+")", f:item.fs[i], thumb:item.thumb,
+        tw:item.w, th:item.h, canvas:null });
+    frameFor(item.w||150,item.h||94);
+    drawFrame(state.frames[0]);
+    repatch();
+  };
+  im.src=item.thumb;
+}
+function canvasOf(img,w,h){
+  var c=document.createElement("canvas"); c.width=w||150; c.height=h||94;
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height); return c;
 }
 $("clear").addEventListener("click",function(){ putSaved([]); renderSaved(); });
 $("save").addEventListener("click",savePad);
 
 /* ================= ui ================= */
-var state={label:"—",patch:null,playing:false,transpose:0,orient:"landscape"};
+var state={frames:[],patch:null,playing:false,transpose:0,orient:"landscape"};
 var view=$("view"), vctx=view.getContext("2d");
 var work=document.createElement("canvas"); work.width=720; work.height=420;
 var wctx=work.getContext("2d",{willReadFrequently:true});
@@ -804,35 +990,36 @@ function frameFor(w,h){
   if(view.width!==W||view.height!==H){ view.width=W; view.height=H; }
   return {w:W,h:H};
 }
-function orientOf(w,h){
-  var r=w/h;
-  if(r>1.15) return "landscape";
-  if(r<0.87) return "portrait";
-  return "square";
-}
+function orientOf(w,h){ var r=w/h; return r>1.15?"landscape":r<0.87?"portrait":"square"; }
 
 var ROWS=[
   ["hue","Root","dominant hue",function(p){return p.f.hueDom;},function(p){return p.rootName;}],
   ["lightness","Quality","bright → dark",function(p){return p.c.light;},function(p){return p.quality;}],
-  ["saturation","Voices","notes in the stack",function(p){return p.c.sat;},function(p){return p.voices+"/6";}],
-  ["v-spread","Voicing","close ↔ open",function(p){return p.c.vspread;},function(p){return p.c.vspread>.5?"open":"close";}],
-  ["texture","Detune","oscillator drift",function(p){return p.c.entropy;},function(p){return p.detune.toFixed(1)+"¢";}],
-  ["brightness","Cutoff","one lowpass",function(p){return p.c.light;},function(p){return p.cutoff<1000?Math.round(p.cutoff)+"Hz":(p.cutoff/1000).toFixed(1)+"kHz";}],
-  ["contrast","Resonance","peak + swell",function(p){return p.c.contrast;},function(p){return "Q "+p.q.toFixed(1);}],
-  ["edges","Breath","filter movement",function(p){return p.c.density;},function(p){return (1/p.lfoRate).toFixed(0)+"s";}],
-  ["blur","Reverb","dry ↔ distant",function(p){return 1-p.c.sharp;},function(p){return Math.round(p.wet*100)+"%";}],
-  ["l/r colour","Width","stereo spread",function(p){return p.c.width;},function(p){return Math.round(p.width*100)+"%";}]
+  ["dominance","Purity","one colour ↔ many",function(p){return p.c.dominance;},
+    function(p){return p.layers[0].dom>.62?"pure":p.layers[0].dom<.34?"mixed":"even";}],
+  ["photos","Layers","one per picture",function(p){return p.layers.length/MAXL;},function(p){return p.layers.length+"/"+MAXL;}],
+  ["texture","Detune","oscillator drift",function(p){return p.c.entropy;},function(p){return p.layers[0].detune.toFixed(1)+"¢";}],
+  ["brightness","Cutoff","per-layer lowpass",function(p){return p.c.light;},
+    function(p){return p.layers[0].cutoff<1000?Math.round(p.layers[0].cutoff)+"Hz":(p.layers[0].cutoff/1000).toFixed(1)+"kHz";}],
+  ["contrast","Resonance","peak + swell",function(p){return p.c.contrast;},function(p){return "Q "+p.layers[0].q.toFixed(1);}],
+  ["edges","Breath","filter movement",function(p){return p.c.density;},function(p){return (1/p.layers[0].lfoRate).toFixed(0)+"s";}],
+  ["repetition","Delay","pattern → echo",function(p){return p.f.periodStrength;},
+    function(p){return Math.round(p.fx.delayTime*1000)+"ms";}],
+  ["grain","Chorus","fine colour noise",function(p){return p.c.grain;},function(p){return Math.round(p.fx.chorusDepth*8000)+"%";}],
+  ["depth","Pre-delay","how big the room",function(p){return p.c.depth;},function(p){return Math.round(p.fx.preDelay*1000)+"ms";}],
+  ["blur","Reverb","dry ↔ distant",function(p){return 1-p.c.sharp;},function(p){return Math.round(p.fx.wet*100)+"%";}]
 ];
-var DIMS=["light","sat","contrast","density","entropy","sharp","vspread","width","warmth"];
+var DIMS=["light","sat","contrast","density","entropy","sharp","vspread","width","warmth","dominance","grain","depth"];
 function featureDistance(a,b){
   var s=0;
   for(var i=0;i<DIMS.length;i++){ var d=(a[DIMS[i]]||0)-(b[DIMS[i]]||0); s+=d*d; }
   return Math.sqrt(s/DIMS.length);
 }
 function paintPatch(p){
-  var notes=notesOf(p);
-  $("chord").textContent=PRETTY[((p.root+state.transpose)%12+12)%12]+" "+p.quality;
-  $("voicing").textContent=notes.slice(0,p.voices).map(function(m){ return PRETTY[((m%12)+12)%12]+(Math.floor(m/12)-1); }).join(" · ");
+  var notes=allNotes(p);
+  $("chord").textContent=PRETTY[((p.root+state.transpose)%12+12)%12]+" "+p.quality+
+    (p.layers.length>1?"  ·  "+p.layers.length+" layers":"");
+  $("voicing").textContent=notes.map(function(m){ return PRETTY[((m%12)+12)%12]+(Math.floor(m/12)-1); }).join(" · ");
   var rows=$("rows");
   if(rows.children.length!==ROWS.length){
     rows.innerHTML=ROWS.map(function(r){
@@ -845,20 +1032,18 @@ function paintPatch(p){
     rows.children[i].querySelector(".num").textContent=r[4](p);
   });
   var f=p.f;
-  $("fp").textContent="fingerprint  "+[f.hue,f.sat,f.light,f.contrast,f.density,f.sharp,f.entropy,f.vspread,f.width]
-    .map(function(v){return v.toFixed(3);}).join(" ");
+  $("fp").textContent="fingerprint  "+[f.hueDom,f.dominance,f.sat,f.light,f.contrast,f.density,f.sharp,
+    f.entropy,f.grain,f.depth,f.periodStrength].map(function(v){return v.toFixed(3);}).join(" ");
   $("looplen").textContent=loopSeconds(p).toFixed(1)+" s";
 
-  /* How far is this patch from the nearest one already saved? Distance over the
-     nine calibrated features, so it reflects what the synth actually hears. */
   var list=loadSaved(), near=$("near");
   if(!list.length){ near.className="near"; near.textContent="save a few pads and this will tell you how far apart they land"; }
   else{
     var best=null,bd=9;
-    for(var i=0;i<list.length;i++){
-      if(!list[i].f) continue;
-      var d=featureDistance(p.c,calib(list[i].f));
-      if(d<bd){ bd=d; best=list[i]; }
+    for(var i2=0;i2<list.length;i2++){
+      var ff=list[i2].fs&&list[i2].fs[0]; if(!ff) continue;
+      var d=featureDistance(p.c,calib(ff));
+      if(d<bd){ bd=d; best=list[i2]; }
     }
     if(!best){ near.textContent=""; }
     else{
@@ -868,27 +1053,85 @@ function paintPatch(p){
     }
   }
 }
-function drawTo(drawer,label,knownF){
+
+function drawFrame(fr){
+  if(!fr||!fr.canvas) return;
+  frameFor(fr.canvas.width,fr.canvas.height);
   wctx.clearRect(0,0,work.width,work.height);
-  drawer(wctx,work.width,work.height);
+  wctx.drawImage(fr.canvas,0,0,work.width,work.height);
   vctx.clearRect(0,0,view.width,view.height);
   vctx.drawImage(work,0,0);
   state.orient=orientOf(work.width,work.height);
-  var p=patchOf(knownF||analyse(work));
-  state.patch=p; state.label=label;
-  $("nametag").textContent=label+" · "+state.orient+" "+work.width+"×"+work.height;
-  paintPatch(p);
-  if(state.playing) applyTo(A,p,notesOf(p),2.6);
+  $("nametag").textContent=fr.label+" · "+state.orient+" "+work.width+"×"+work.height;
 }
-function fromImage(img,label){
+var ROLES=["key + bass","harmony","upper air","top shimmer"];
+function renderFrames(){
+  var box=$("frames"); box.innerHTML="";
+  /* layers are ordered darkest-first at patch time, so the role each photo
+     plays is shown from the patch, not from the order they were added */
+  var order=state.frames.map(function(f,i){return {f:f,i:i};})
+                        .sort(function(a,b){return a.f.f.light-b.f.f.light;});
+  state.frames.forEach(function(fr,i){
+    var role=order.findIndex(function(o){ return o.i===i; });
+    var b=document.createElement("button"); b.className="fr";
+    b.setAttribute("aria-current", i===state.shown?"true":"false");
+    var img=new Image(); img.src=fr.thumb; img.alt=fr.label; b.appendChild(img);
+    var r=document.createElement("span"); r.className="role";
+    r.textContent=state.frames.length>1?ROLES[Math.min(3,role)]:"single";
+    b.appendChild(r);
+    var x=document.createElement("button"); x.className="x"; x.textContent="×";
+    x.setAttribute("aria-label","Remove "+fr.label);
+    x.addEventListener("click",function(e){ e.stopPropagation(); removeFrame(i); });
+    b.appendChild(x);
+    b.addEventListener("click",function(){ state.shown=i; drawFrame(fr); renderFrames(); });
+    box.appendChild(b);
+  });
+  if(state.frames.length<MAXL){
+    var hint=document.createElement("span"); hint.className="hint";
+    hint.textContent=state.frames.length?"add up to "+(MAXL-state.frames.length)+" more — each photo becomes a layer":"";
+    box.appendChild(hint);
+  }
+}
+function removeFrame(i){
+  state.frames.splice(i,1);
+  if(!state.frames.length){ addScene(SCENES[0]); return; }
+  state.shown=Math.min(state.shown||0,state.frames.length-1);
+  drawFrame(state.frames[state.shown]);
+  repatch(); renderFrames();
+}
+function repatch(){
+  if(!state.frames.length) return;
+  state.patch=buildPatch(state.frames.map(function(f){return f.f;}));
+  paintPatch(state.patch);
+  if(state.playing) applyTo(A,state.patch,2.8);
+}
+function makeFrame(drawer,label,w,h){
+  var c=document.createElement("canvas");
+  var cap=900, s=Math.min(1,cap/Math.max(w,h));
+  c.width=Math.max(80,Math.round(w*s)); c.height=Math.max(80,Math.round(h*s));
+  drawer(c.getContext("2d"),c.width,c.height);
+  var ar=c.width/c.height, tw=Math.round(ar>=1?170:170*ar), th=Math.round(ar>=1?170/ar:170);
+  var t=document.createElement("canvas"); t.width=tw; t.height=th;
+  t.getContext("2d").drawImage(c,0,0,tw,th);
+  return { label:label, canvas:c, thumb:t.toDataURL("image/jpeg",0.72), tw:tw, th:th,
+    f:analysePixels(px(c,MID,MID).data,MID,MID) };
+}
+function addFrame(fr,replaceAll){
+  if(replaceAll) state.frames=[fr];
+  else if(state.frames.length>=MAXL) state.frames[MAXL-1]=fr;
+  else state.frames.push(fr);
+  state.shown=state.frames.length-1;
+  drawFrame(fr); repatch(); renderFrames();
+}
+function addScene(s){ addFrame(makeFrame(s.draw,s.n,720,420),true); }
+function addImage(img,label,replaceAll){
   var iw=img.naturalWidth||img.videoWidth||img.width, ih=img.naturalHeight||img.videoHeight||img.height;
-  frameFor(iw,ih);
-  drawTo(function(c,w,h){ c.drawImage(img,0,0,w,h); },label);   /* full frame, no crop */
+  addFrame(makeFrame(function(c,w,h){ c.drawImage(img,0,0,w,h); },label,iw,ih),replaceAll);
 }
 function fromFile(f){
   if(!f) return;
   var img=new Image(), u=URL.createObjectURL(f);
-  img.onload=function(){ stopLive(); fromImage(img,(f.name||"photo").replace(/\.[^.]+$/,"").slice(0,26)); URL.revokeObjectURL(u); };
+  img.onload=function(){ stopLive(); addImage(img,(f.name||"photo").replace(/\.[^.]+$/,"").slice(0,22),false); URL.revokeObjectURL(u); };
   img.onerror=function(){ $("nametag").textContent="couldn't read that image"; URL.revokeObjectURL(u); };
   img.src=u;
 }
@@ -904,7 +1147,7 @@ SCENES.forEach(function(s,i){
   b.addEventListener("click",function(){
     stopLive();
     Array.prototype.forEach.call(strip.children,function(x,j){ x.setAttribute("aria-pressed",j===i?"true":"false"); });
-    frameFor(720,420); drawTo(s.draw,s.n);
+    addFrame(makeFrame(s.draw,s.n,720,420),false);
   });
   strip.appendChild(b);
 });
@@ -924,7 +1167,8 @@ $("live").addEventListener("click",function(){
     return video.play();
   }).then(function(){
     btn.textContent="Stop camera";
-    liveT=setInterval(function(){ if(video.videoWidth) fromImage(video,"live camera"); },600);
+    /* live replaces the last layer rather than piling up */
+    liveT=setInterval(function(){ if(video.videoWidth) addImage(video,"live camera",state.frames.length<=1); },700);
   }).catch(function(err){ $("nametag").textContent="camera unavailable: "+err.name; });
 });
 
@@ -933,7 +1177,7 @@ function setPlaying(on){
   state.playing=on;
   $("play").textContent=on?"■ Stop":"▶ Play";
   $("dockPlay").textContent=on?"Stop":"Play";
-  if(on){ applyTo(G,state.patch,notesOf(state.patch),0.1); G.out.gain.setTargetAtTime(master,G.ctx.currentTime,1.4); }
+  if(on){ applyTo(G,state.patch,0.1); G.out.gain.setTargetAtTime(master,G.ctx.currentTime,1.6); }
   else { G.out.gain.setTargetAtTime(0,G.ctx.currentTime,0.9); $("breath").style.transform="scaleX(0)"; }
 }
 function toggle(){ setPlaying(!state.playing); }
@@ -948,7 +1192,7 @@ $("vol").addEventListener("input",function(e){
 function transpose(d){
   state.transpose=Math.max(-12,Math.min(12,state.transpose+d));
   $("tr").textContent=(state.transpose>0?"+":state.transpose<0?"":"±")+state.transpose+" st";
-  if(state.patch){ paintPatch(state.patch); if(state.playing) applyTo(A,state.patch,notesOf(state.patch),0.8); }
+  if(state.patch){ paintPatch(state.patch); if(state.playing) applyTo(A,state.patch,0.8); }
 }
 $("more").addEventListener("click",function(){
   var on=document.body.classList.toggle("expanded");
@@ -962,18 +1206,17 @@ $("down").addEventListener("click",function(){ transpose(-1); });
 var t0=performance.now();
 (function frame(){
   if(state.playing&&state.patch){
-    var ph=(performance.now()-t0)/1000*state.patch.lfoRate;
+    var ph=(performance.now()-t0)/1000*state.patch.layers[0].lfoRate;
     $("breath").style.transform="scaleX("+(0.5+0.5*Math.sin(ph*6.2831853))+")";
   }
   requestAnimationFrame(frame);
 })();
 
-if(window.matchMedia("(max-width:780px)").matches) $("rowsWrap").removeAttribute("open");
 $("build").textContent="build "+(document.documentElement.getAttribute("data-build")||"dev")+
   " · viewport "+window.innerWidth+"px";
+if(window.matchMedia("(max-width:780px)").matches) $("rowsWrap").removeAttribute("open");
 renderSaved();
-frameFor(720,420);
-drawTo(SCENES[0].draw,SCENES[0].n);
+addScene(SCENES[0]);
 })();
 </script>
 
