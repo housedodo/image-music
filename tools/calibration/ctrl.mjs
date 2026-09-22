@@ -16,7 +16,7 @@ const cases={
 };
 console.log("control            periodStrength  delay      feedback  mix");
 for(const [k,d] of Object.entries(cases)){
-  const f=analysePixels(d,N,N), p=buildPatch([f]);
+  const f=analysePixels(d,N,N), p=buildPatch(f);
   console.log("  "+k.padEnd(22),f.periodStrength.toFixed(3).padStart(5),
     "   "+String(Math.round(p.fx.delayTime*1000)+"ms").padStart(6),
     "   "+(p.fx.delayFeedback*100).toFixed(0).padStart(3)+"%",

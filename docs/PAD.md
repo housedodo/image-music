@@ -125,23 +125,25 @@ falling back to a blob link when served normally. Note the artifact download all
 
 # Layers and detail
 
-## One layer per photo (up to four)
+## Three layers from one photo
 
-The first photo sets the key, the chord quality and the effects bed. Every further photo
-becomes its own layer:
+**One picture, one pad — nothing stacks across photos.** The layers come from inside the
+single image: it is split into shadows, midtones and highlights at `mean ± 0.62σ`, and each
+band is measured separately. A band covering under 10% of the frame is dropped, so a flat
+picture plays one layer and a picture with real tonal range plays three — decided by the
+photograph, not by a setting.
 
-| Per-layer, from that photo | |
+| Per-layer, from that band | |
 |---|---|
-| root | its dominant hue, **snapped into the first photo's scale** so it can only add consonant tones |
-| register | photos are sorted by lightness — darkest takes the bottom octave, brightest the top |
-| voice count | its saturation, adjusted by its colour dominance |
-| cutoff, Q | its brightness and contrast, on its own lowpass |
-| breath rate | its edge density, on its own LFO |
-| pan, gain | its index in the stack and its L/R colour difference |
+| root | that band's dominant hue, **snapped into the whole picture's scale** so it can only add consonant tones |
+| register | shadows take octave 2, midtones 3, highlights 4 |
+| voice count | that band's saturation, adjusted by its colour dominance |
+| cutoff, Q | that band's brightness and contrast, on its own lowpass |
+| gain | how much of the frame the band covers |
+| pan | band index, spread by the frame's L/R colour difference |
 
-Measured on four stacked photos: 2 notes becomes 11, spread octave 2 → 5, with layer
-cutoffs at 319 Hz / 403 Hz / 1.2 kHz / 2.5 kHz and pan from −0.30 to +0.30. "More detailed"
-here means four independently filtered voices at four heights, not a busier chord.
+Measured on a real photo (a cat in a sunbeam): three layers at octaves 2/3/4 with cutoffs
+379 Hz / 793 Hz / 2155 Hz, coverage 26% / 45% / 29%, pan −0.45 / 0 / +0.45.
 
 ## Colour dominance
 
@@ -173,9 +175,33 @@ correlation at the peak lag and at twice it, minus the mean correlation:
 strength = clamp( (min(ac[L], ac[2L]) − mean(ac)) × 2.6 )
 ```
 
-Measured: a regular 16px fence scores 1.000 and gives 284 ms; a 32px window grid scores
-1.000 and gives 478 ms; bands at irregular widths score 0.077 and per-pixel noise 0.000 —
-both get no echo, because mix and feedback are gated at `(strength − 0.42)`.
+Two corrections were needed, both found by running real photographs rather than synthetic
+scenes:
+
+1. **High-pass the column signal** (subtract a moving average over `W/10`). A broad
+   left-to-right gradient otherwise masquerades as repetition.
+2. **Start the search past the first local minimum** of the autocorrelation. Any smooth
+   signal correlates strongly with itself at the smallest lag offered, so all three test
+   photographs originally reported strength 1.000 at 4px and got an identical delay.
+
+Measured after both: a regular 16px fence scores 1.000 → 284 ms, a 32px window grid
+1.000 → 478 ms, per-pixel noise 0.032, and three ordinary photographs 0.18–0.32 — all
+gated to no echo, since mix and feedback start at `(strength − 0.42)`.
+
+## Perceived brightness
+
+`light` is `0.5 × mean + 0.5 × 75th percentile` of luminance, not the mean alone: a sunny
+photograph containing deep forest shadow has a mean around 0.49 and was being read as a
+night shot.
+
+Warmth now **modulates** darkness instead of adding to it:
+
+```
+dark = (1 − light) × (0.80 + 0.40 × (1 − warmth))
+```
+
+so coolness deepens a dark picture but cannot drag a bright one to the bottom of the mode
+ladder. Before this, a sunlit alpine road came out `min♭9`, the bleakest quality available.
 
 ### Chorus ← grain
 

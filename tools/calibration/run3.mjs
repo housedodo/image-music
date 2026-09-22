@@ -11,13 +11,13 @@ for(const [k,f] of Object.entries(F))
 
 console.log("\nDELAY — does a repeating picture give a repeating echo?");
 for(const k of ["fence","fence shuffled","beige room"]){
-  const p=buildPatch([F[k]]);
+  const p=buildPatch(F[k]);
   console.log("  "+k.padEnd(16),Math.round(p.fx.delayTime*1000)+"ms  feedback",
     (p.fx.delayFeedback*100).toFixed(0)+"%  mix",(p.fx.delayMix*100).toFixed(0)+"%");
 }
 console.log("\nDOMINANCE — one colour vs two");
 for(const k of ["pure teal","teal + orange"]){
-  const p=buildPatch([F[k]]), l=p.layers[0];
+  const p=buildPatch(F[k]), l=p.layers[0];
   console.log("  "+k.padEnd(16),(p.rootName+" "+p.quality).padEnd(12),"notes",l.notes.length,
     " detune",l.detune.toFixed(1)+"c  dominance",l.dom.toFixed(2),
     " 2nd colour tone:",l.second?PRETTY[l.second%12]:"none");
@@ -25,7 +25,7 @@ for(const k of ["pure teal","teal + orange"]){
 console.log("\nLAYERING — one photo, then stacking more");
 for(const set of [["beige room"],["beige room","red door"],["beige room","red door","night window"],
                   ["beige room","red door","night window","green hedge"]]){
-  const p=buildPatch(set.map(k=>F[k]));
+  const p=buildPatch(F[set[0]]);
   const notes=p.layers.flatMap(l=>l.notes);
   console.log("  "+String(set.length)+" photo(s): "+(p.rootName+" "+p.quality).padEnd(11),
     "layers",p.layers.length," notes",String(notes.length).padStart(2),
