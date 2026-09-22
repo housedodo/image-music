@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1b2f6b"/><stop offset="100%" stop-color="#e8934a"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="400" fill="url(#sky)"/>
+  <rect y="280" width="640" height="120" fill="#12303a"/>
+  <g fill="#0a1218">
+    <rect x="60" y="150" width="50" height="140"/><rect x="130" y="200" width="36" height="90"/>
+    <rect x="190" y="120" width="60" height="170"/><rect x="270" y="190" width="44" height="100"/>
+    <rect x="340" y="160" width="52" height="130"/><rect x="420" y="210" width="40" height="80"/>
+    <rect x="490" y="140" width="66" height="150"/>
+  </g>
+  <g fill="#f5d98a">
+    <rect x="72" y="170" width="8" height="10"/><rect x="90" y="196" width="8" height="10"/>
+    <rect x="200" y="140" width="8" height="10"/><rect x="226" y="180" width="8" height="10"/>
+    <rect x="352" y="182" width="8" height="10"/><rect x="500" y="160" width="8" height="10"/>
+    <rect x="528" y="208" width="8" height="10"/>
+  </g>
+  <circle cx="520" cy="90" r="34" fill="#ffd9a0"/>
+</svg>
