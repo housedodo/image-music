@@ -220,3 +220,61 @@ A strong gradient pushes the pre-delay from 5 ms to 90 ms, so the room gets bigg
 stack; `ctrl.mjs` runs the periodicity detector against regular, irregular and random
 controls. Both slice the core out of `web/pad.body.html`, so they cannot drift from what
 ships.
+
+
+---
+
+# The affect grid
+
+## Why the ladder failed
+
+Chord quality used to come off a single bright-to-dark ladder. Measured over fifteen
+images it produced **8 majors, 7 minors and zero neutrals** — the curve was steep enough to
+snap everything to one end or the other, so `sus2` and `add9` never occurred at all. Worse,
+the median real photograph landed in the minor half, which is why every early result
+sounded dark.
+
+Saturation carried no weight in mood at all, so a vivid picture and a washed-out one of the
+same brightness gave the same chord.
+
+## Two axes
+
+| | from |
+|---|---|
+| **valence** — warm ↔ cool | `0.45·light + 0.22·sat + 0.25·warmth + 0.08·(1−density)` |
+| **arousal** — still ↔ busy | `0.38·contrast + 0.30·density + 0.20·sat + 0.12·grain` |
+
+Each is expanded by a logistic centred at 0.468 / 0.530 with k=14, then split into three
+bands at 0.37 and 0.63. The pair indexes a 3×3 grid:
+
+| | **calm** | **mid** | **energetic** |
+|---|---|---|---|
+| **warm** | maj9 · *serene* | add9 · *warm* | 6/9 · *joyful* |
+| **neutral** | sus2 · *open* | quartal · *suspended* | maj7♯11 · *bright* |
+| **cool** | min9 · *wistful* | min7 · *moody* | min♭9 · *tense* |
+
+Arousal also drives the synth, not just the chord: it lifts the octave, opens the cutoff
+(×0.72–1.47), speeds the breath (×0.65–1.55) and picks the waveform. Waveform used to come
+from colour temperature alone, which real photographs almost never push far enough to reach
+a sawtooth.
+
+Measured on three real photographs:
+
+| photo | chord | mood | valence / arousal |
+|---|---|---|---|
+| cat in a sunbeam | G maj9 | serene | 0.67 / 0.20 |
+| sunlit alpine road | C♯ maj7♯11 | bright | 0.50 / 0.67 |
+| dark blue studio | A♭ min♭9 | tense | 0.12 / 0.80 |
+
+## Calibration debt
+
+**The anchors rest on three real photographs.** The twelve synthetic "everyday" scenes in
+`tools/calibration/gen.mjs` turned out to be unrepresentative — flat pastel fills with no
+shadow or texture — so anchors derived from them read real photographs as far darker than
+they are. They were moved toward the real samples (`light` 0.57→0.48, `density` 0.16→0.30,
+`entropy` 0.15→0.28, slopes gentled), but n=3 is not a calibration set.
+
+What would fix it: 15–30 real photographs spanning bright/dark, vivid/muted, busy/still,
+warm/cool. Run them through `tools/calibration/photos.mjs`, take the median of each raw
+feature, and set that as its anchor. Until then the synthetic scenes cluster on `maj9`, and
+that clustering should be read as a fault in the test set rather than in the mapping.
