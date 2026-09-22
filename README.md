@@ -8,23 +8,29 @@ you can open right now with no build step.
 
 ## Quick start
 
-```bash
-cd web && python3 -m http.server 8000
-# open http://localhost:8000
-```
+Open `index.html` — that's pad mode, the whole app in one file with no build step. It runs
+straight from disk, and from any static host (GitHub Pages, Cloudflare Pages) over HTTPS,
+which the camera requires.
 
-Open `pad.html` for pad mode, or `index.html` for the sequencer. Drop in an image (or hit "Camera") and press play. Every knob in the UI corresponds to a
-documented mapping rule.
+On a phone, **Take photo** opens the rear camera directly. The frame takes the photo's own
+aspect ratio, so portrait and landscape both show whole — nothing is cropped.
 
 ## Read next
 
 | File | What's in it |
 |---|---|
+| [`docs/PAD.md`](docs/PAD.md) | **Pad mode** — one image, one sustained chord. The live spec |
 | [`docs/CONCEPT.md`](docs/CONCEPT.md) | The idea, the three possible products, the reasoning behind every sound choice |
-| [`docs/PAD.md`](docs/PAD.md) | **Pad mode** — one image, one sustained chord. The recommended default |
-| [`docs/MAPPING.md`](docs/MAPPING.md) | The full sequencer mapping: image-feature → music-parameter, precisely specified |
+| [`docs/MAPPING.md`](docs/MAPPING.md) | The older sequencer mapping, precisely specified |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Staged build plan, tech options with trade-offs |
-| [`web/`](web/) | The prototype: analysis, mapping, synthesis, sequencer |
+
+## Also in here, not currently linked from the app
+
+| Path | What it is |
+|---|---|
+| `web/demo-standalone.html` | The sequencer bench and its angle-stability lab |
+| `web/index.html` + `web/*.js` | The modular sequencer prototype |
+| `experiments/catdex.html` | Photo → 32×32 pixel cat card, a sibling experiment |
 
 ## The one-sentence version
 
