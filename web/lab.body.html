@@ -36,7 +36,7 @@
   button:focus-visible,.fake:focus-visible{outline:2px solid var(--jade);outline-offset:2px;}
   button.jade{background:var(--jade);color:var(--bg);border-color:var(--jade);font-weight:600;}
   button:disabled{opacity:.45;cursor:default;}
-  .fake input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+  .filein{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;}
 
   .auto{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin:14px 0 8px;letter-spacing:.02em;}
   .auto b{color:var(--ink-2);font-weight:500;}
@@ -86,8 +86,8 @@
 
   <div class="screen"><canvas id="view" width="540" height="720"></canvas><span class="name" id="nametag">—</span></div>
   <div class="acts">
-    <label class="fake">📷 Take photo<input type="file" id="shoot" accept="image/*" capture="environment"></label>
-    <label class="fake">🖼️ Upload photo<input type="file" id="pick" accept="image/*"></label>
+    <button type="button" class="fake" data-for="shoot">📷 Take photo</button><input type="file" id="shoot" class="filein" accept="image/*" capture="environment">
+    <button type="button" class="fake" data-for="pick">🖼️ Upload photo</button><input type="file" id="pick" class="filein" accept="image/*">
   </div>
 
   <p class="auto" id="auto">—</p>
@@ -105,7 +105,6 @@
     <p class="how"><b>👍</b> fits the picture · <b>😐</b> could work · <b>👎</b> wrong. Rate as many of the five as you like — the ones you skip just don't count. The note is where the useful surprises are.</p>
   </section>
 </div>
-
 <script>
 (function(){
 "use strict";
@@ -1023,7 +1022,24 @@ function fromFile(f){
   img.src=u;
 }
 ["shoot","pick"].forEach(function(id){
-  $(id).addEventListener("change",function(e){ fromFile(e.target.files[0]); e.target.value=""; });
+  $(id).addEventListener("change",function(e){ fromFile(e.target.files&&e.target.files[0]); e.target.value=""; });
+});
+document.querySelectorAll("[data-for]").forEach(function(b){
+  b.addEventListener("click",function(){
+    var inp=$(b.dataset.for);
+    try{ if(inp.showPicker){ inp.showPicker(); return; } }catch(e){}
+    inp.click();
+  });
+});
+/* fallbacks where the host blocks the file chooser: paste or drop an image */
+document.addEventListener("paste",function(e){
+  var it=[].slice.call((e.clipboardData||{}).items||[]).filter(function(i){return i.type.indexOf("image/")===0;})[0];
+  if(it) fromFile(it.getAsFile());
+});
+document.addEventListener("dragover",function(e){ e.preventDefault(); });
+document.addEventListener("drop",function(e){
+  e.preventDefault(); var f=e.dataTransfer&&e.dataTransfer.files[0];
+  if(f && /^image\//.test(f.type)) fromFile(f);
 });
 
 /* ---------------- variants ---------------- */
