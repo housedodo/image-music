@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 11:50 UTC">
+<html lang="en" data-build="2026-09-22 11:56 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -562,9 +562,12 @@ function bands(d,W,H){
    0.10-0.28 over twelve ordinary scenes). Each passes through a logistic
    centred on the everyday median; it stretches the crowded middle and never
    fully saturates, so extremes still separate. */
-var CAL={ light:[0.48,7.0], sat:[0.28,8.0], contrast:[0.40,6.0], density:[0.30,9.0],
-          entropy:[0.28,9.0], sharp:[0.30,7.0], vspread:[0.30,7.0], width:[0.20,9.0],
-          warmth:[0.55,6.0], grain:[0.13,13], depth:[0.10,12], dominance:[0.85,9.0] };
+var CAL={
+          light:[0.529,8.4], sat:[0.344,10.4], contrast:[0.398,14.3],
+          density:[0.350,9.6], entropy:[0.354,12.1], sharp:[0.452,5.6],
+          vspread:[0.273,9.0], width:[0.451,4.1], warmth:[0.773,4.8],
+          grain:[0.142,13.7], depth:[0.059,18.5], dominance:[0.770,7.6]
+        };
 function sig(v,mid,k){ return 1/(1+Math.exp(-k*(v-mid))); }
 function calib(f){
   var c={},k;
@@ -624,7 +627,10 @@ function affect(c){
   /* Centred and scaled on real photographs rather than synthetic test scenes:
      their measured spread is narrow (0.19 on both axes), so a gentle curve
      leaves every picture in the middle band and the grid never gets used. */
-  return { valence:sig(val,0.468,14), arousal:sig(aro,0.530,14) };
+  /* Centre and slope fitted to a corpus of eighteen real photographs: the
+     median lands mid-grid and the 10th-90th percentiles span roughly
+     0.15-0.85, so all nine cells are reachable. */
+  return { valence:sig(val,0.428,12.4), arousal:sig(aro,0.520,7.8) };
 }
 function band(v){ return v>0.63?2:v<0.37?0:1; }
 function qualityOf(c){
