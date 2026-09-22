@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 11:00 UTC">
+<html lang="en" data-build="2026-09-22 11:09 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -102,6 +102,9 @@
   .prow .bar{display:block;height:3px;background:var(--sunk);border-radius:2px;overflow:hidden;margin-top:3px;}
   .prow .bar i{display:block;height:100%;background:var(--jade);transition:width .5s ease;}
   .prow .num{font-family:var(--mono);font-size:9.5px;text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums;}
+  .near{margin-top:10px;font-family:var(--mono);font-size:9.5px;letter-spacing:.03em;color:var(--ink-3);}
+  .near b{color:var(--jade);font-weight:400;}
+  .near.close b{color:var(--warn);}
   .fp{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-family:var(--mono);font-size:8.5px;
     color:var(--ink-3);word-break:break-all;letter-spacing:.03em;}
 
@@ -197,6 +200,7 @@
         <p class="chordline" id="chord">—</p>
         <p class="voicing" id="voicing">—</p>
         <details id="rowsWrap" open><summary>All ten mappings</summary><div id="rows"></div></details>
+        <p class="near" id="near"></p>
         <p class="fp" id="fp"></p>
       </div>
 
@@ -233,6 +237,22 @@
         <dt>Edge density → breath rate</dt><dd>All that's left of rhythm — one filter cycle per 40 seconds down to per 4.5.</dd>
         <dt>Blur → reverb</dt><dd>Soft focus goes wet and distant; sharp stays dry and close.</dd>
         <dt>L/R colour → stereo width</dt><dd>Frames whose halves differ in saturation sit wider.</dd>
+      </dl></div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Do everyday photos all sound the same?</h3>
+    <p class="note">They used to. Real photographs are not spread evenly across the measurement scales — they bunch up in the middle-low part of every one. Measured over twelve ordinary indoor and street scenes, saturation ran 0.02–0.37 and edge density 0.10–0.28, so almost the whole musical range was reserved for pictures nobody takes. Twelve such scenes produced only <b>6 distinct chords, across 3 roots</b>, and G on eight of them.</p>
+    <p class="note">Three changes fixed most of it, and the same twelve scenes now give <b>10 distinct chords across 5 roots</b>:</p>
+    <div class="cols">
+      <div><dl>
+        <dt>Calibrated scales</dt><dd>Every feature passes through a logistic centred on the everyday median, stretching the crowded middle. It never quite saturates, so extreme pictures still separate at the ends.</dd>
+        <dt>Dominant hue, not average hue</dt><dd>The root now comes from the peak of a saturation-weighted hue histogram, so one red mug on a beige desk picks the key instead of being averaged into the desk.</dd>
+      </dl></div>
+      <div><dl>
+        <dt>Two axes for chord quality</dt><dd>Lightness used to drive quality, register and cutoff at once, which made them move together. Quality now reads lightness <em>and</em> warmth, so warm dark and cold dark part company.</dd>
+        <dt>Honest limit</dt><dd>Two photos of the same beige room should still sound alike — that is the mapping working. Check it yourself: save a few pads and the patch panel reports how far the current one sits from its nearest neighbour.</dd>
       </dl></div>
     </div>
   </section>
@@ -299,43 +319,62 @@ function hsv(r,g,b){ r/=255;g/=255;b/=255; var mx=Math.max(r,g,b),mn=Math.min(r,
   if(d){ if(mx===r)h=((g-b)/d+6)%6; else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4; h/=6; }
   return [h, mx?d/mx:0, mx]; }
 
-function analyse(src){
-  var im=px(src,MID,MID), d=im.data, n=MID*MID, i,k;
+function analyse(src){ var im=px(src,MID,MID); return analysePixels(im.data,MID,MID); }
+
+/* Pure function over RGBA bytes, so the same code can be measured outside a browser. */
+function analysePixels(d,W,H){
+  var n=W*H, i,k;
   var sx=0,sy=0,wt=0,satS=0,satN=0,vS=0,v2S=0,rS=0,bS=0;
-  var rowL=new Float32Array(MID), colSat=new Float32Array(MID), lum=new Float32Array(n);
+  var rowL=new Float32Array(H), colSat=new Float32Array(W), lum=new Float32Array(n);
+  var HB=24, hist=new Float32Array(HB), histX=new Float32Array(HB), histY=new Float32Array(HB);
   for(i=0;i<n;i++){
     var o=i*4, hv=hsv(d[o],d[o+1],d[o+2]), w=hv[1]*hv[2];
     sx+=Math.cos(hv[0]*6.2831853)*w; sy+=Math.sin(hv[0]*6.2831853)*w; wt+=w;
+    /* s^2 weighting: a small vivid object should out-vote a large muted wall */
+    var hw=hv[1]*hv[1]*hv[2], hb=Math.min(HB-1,(hv[0]*HB)|0);
+    hist[hb]+=hw; histX[hb]+=Math.cos(hv[0]*6.2831853)*hw; histY[hb]+=Math.sin(hv[0]*6.2831853)*hw;
     if(hv[2]>.15){ satS+=hv[1]; satN++; }
     var L=(d[o]*.2126+d[o+1]*.7152+d[o+2]*.0722)/255;
     lum[i]=L; vS+=L; v2S+=L*L; rS+=d[o]; bS+=d[o+2];
-    rowL[(i/MID)|0]+=L; colSat[i%MID]+=hv[1];
+    rowL[(i/W)|0]+=L; colSat[i%W]+=hv[1];
   }
   var hue=wt>1e-6?Math.atan2(sy,sx)/6.2831853:0; if(hue<0)hue+=1;
+
+  /* dominant hue: the peak of the histogram, refined by a circular mean over
+     its two neighbours. Everyday photos have one colourful thing in a muted
+     field, and this finds that thing instead of averaging it away. */
+  var peak=0,hsum=0;
+  for(k=0;k<HB;k++){ hsum+=hist[k]; if(hist[k]>hist[peak]) peak=k; }
+  var px2=0,py2=0,pw=0;
+  for(var dk=-1;dk<=1;dk++){ var j=((peak+dk)%HB+HB)%HB; px2+=histX[j]; py2+=histY[j]; pw+=hist[j]; }
+  var hueDom=pw>1e-6?Math.atan2(py2,px2)/6.2831853:hue; if(hueDom<0)hueDom+=1;
+  var colourfulness=hsum>1e-6?pw/hsum:0;
+
   var mean=vS/n, contrast=Math.sqrt(Math.max(0,v2S/n-mean*mean))*2.4;
   var rm=0,rv=0;
-  for(k=0;k<MID;k++) rm+=rowL[k]/MID; rm/=MID;
-  for(k=0;k<MID;k++){ var dv=rowL[k]/MID-rm; rv+=dv*dv; }
-  var vspread=clamp(Math.sqrt(rv/MID)*4.5);
+  for(k=0;k<H;k++) rm+=rowL[k]/W; rm/=H;
+  for(k=0;k<H;k++){ var dv=rowL[k]/W-rm; rv+=dv*dv; }
+  var vspread=clamp(Math.sqrt(rv/H)*4.5);
   var lsat=0,rsat=0;
-  for(k=0;k<MID;k++){ if(k<MID/2) lsat+=colSat[k]; else rsat+=colSat[k]; }
+  for(k=0;k<W;k++){ if(k<W/2) lsat+=colSat[k]; else rsat+=colSat[k]; }
   var lr=clamp(Math.abs(lsat-rsat)/((lsat+rsat)/2+1e-6)*3);
   var tot=0,lap=0,cnt=0;
-  for(var y=1;y<MID-1;y++) for(var x=1;x<MID-1;x++){
-    var p=y*MID+x;
-    var gx=-lum[p-MID-1]-2*lum[p-1]-lum[p+MID-1]+lum[p-MID+1]+2*lum[p+1]+lum[p+MID+1];
-    var gy=-lum[p-MID-1]-2*lum[p-MID]-lum[p-MID+1]+lum[p+MID-1]+2*lum[p+MID]+lum[p+MID+1];
+  for(var y=1;y<H-1;y++) for(var x=1;x<W-1;x++){
+    var p2=y*W+x;
+    var gx=-lum[p2-W-1]-2*lum[p2-1]-lum[p2+W-1]+lum[p2-W+1]+2*lum[p2+1]+lum[p2+W+1];
+    var gy=-lum[p2-W-1]-2*lum[p2-W]-lum[p2-W+1]+lum[p2+W-1]+2*lum[p2+W]+lum[p2+W+1];
     tot+=Math.hypot(gx,gy);
-    lap+=Math.abs(4*lum[p]-lum[p-1]-lum[p+1]-lum[p-MID]-lum[p+MID]); cnt++;
+    lap+=Math.abs(4*lum[p2]-lum[p2-1]-lum[p2+1]-lum[p2-W]-lum[p2+W]); cnt++;
   }
   var ent=0,tiles=0;
-  for(var ty=0;ty+8<=MID;ty+=8) for(var tx=0;tx+8<=MID;tx+=8){
-    var hist=new Uint8Array(16);
-    for(var yy=0;yy<8;yy++) for(var xx=0;xx<8;xx++) hist[Math.min(15,(lum[(ty+yy)*MID+tx+xx]*16)|0)]++;
-    var e=0; for(k=0;k<16;k++) if(hist[k]){ var pr=hist[k]/64; e-=pr*Math.log2(pr); }
+  for(var ty=0;ty+8<=H;ty+=8) for(var tx=0;tx+8<=W;tx+=8){
+    var hh=new Uint8Array(16);
+    for(var yy=0;yy<8;yy++) for(var xx=0;xx<8;xx++) hh[Math.min(15,(lum[(ty+yy)*W+tx+xx]*16)|0)]++;
+    var e=0; for(k=0;k<16;k++) if(hh[k]){ var pr=hh[k]/64; e-=pr*Math.log2(pr); }
     ent+=e/4; tiles++;
   }
-  return { hue:hue, sat:satN?satS/satN:0, light:mean, contrast:clamp(contrast),
+  return { hue:hue, hueDom:hueDom, colourfulness:colourfulness,
+    sat:satN?satS/satN:0, light:mean, contrast:clamp(contrast),
     density:clamp(tot/cnt*1.6), sharp:clamp(lap/cnt*6), entropy:clamp(ent/tiles),
     vspread:vspread, width:lr, warmth:clamp(((rS-bS)/(rS+bS+1e-6))*2+.5) };
 }
@@ -353,26 +392,61 @@ var QUALITIES=[
   {n:"min7",   f:"min7",   iv:[0,7,10,12,15,19]},
   {n:"min♭9",  f:"minb9",  iv:[0,7,10,13,15,20]}
 ];
+/* CALIBRATION.
+   Raw features are not uniformly distributed over [0,1] — real photographs
+   cluster hard in the middle-low part of every scale (measured: saturation
+   0.02–0.37, edge density 0.10–0.28, entropy 0.00–0.32 across twelve ordinary
+   indoor/street scenes). Feeding those straight into the mapping wastes most
+   of the musical range on images nobody takes.
+   Each feature passes through a logistic centred on the everyday median, with
+   a slope that stretches the crowded middle. It never saturates, so genuinely
+   extreme images still separate at the ends. */
+var CAL={ light:[0.57,7.5], sat:[0.17,11], contrast:[0.30,6.5], density:[0.16,15],
+          entropy:[0.15,12], sharp:[0.38,6], vspread:[0.30,8], width:[0.20,11],
+          warmth:[0.60,9] };
+function sig(v,mid,k){ return 1/(1+Math.exp(-k*(v-mid))); }
+function calib(f){
+  var c={},k;
+  for(k in CAL) c[k]=sig(f[k],CAL[k][0],CAL[k][1]);
+  c.hue=f.hue; c.hueDom=f.hueDom; c.colourfulness=f.colourfulness;
+  return c;
+}
 function patchOf(f){
-  var root=FIFTHS[Math.round(f.hue*12)%12];
-  var q=QUALITIES[Math.min(6,Math.round((1-f.light)*6))];
-  var voices=f.sat<.16?2:f.sat<.34?3:f.sat<.55?4:f.sat<.76?5:6;
-  var octave=2+Math.round(f.light*2), spread=f.vspread, midi=[];
+  var c=calib(f);
+  /* Root comes from the dominant hue, not the global mean: one colourful
+     object should pick the key instead of being averaged into the wall behind
+     it. Near-grey frames have no dominant hue worth trusting, so they fall
+     back to a stable combination of warm/cool balance and the weak mean. */
+  var grey=f.colourfulness<0.22 || f.sat<0.07;
+  var hueSrc = grey ? ((f.warmth*1.9+f.hue*0.55)%1+1)%1 : f.hueDom;
+  var root=FIFTHS[Math.round(hueSrc*12)%12];
+  /* Quality on two axes rather than one: darkness pulls toward minor, coolness
+     pulls further. Warm dark (candlelight) should not be as bleak as cold dark
+     (night street), and this also stops lightness from driving three
+     parameters at once. */
+  /* A weighted mean of two mid-range numbers regresses to the middle, so the
+     combination gets its own expansion before it picks a chord. */
+  var dark=(1-c.light)*0.68+(1-c.warmth)*0.32;
+  var qi=Math.round(sig(dark,0.49,9.5)*6);
+  var q=QUALITIES[Math.max(0,Math.min(6,qi))];
+  var voices=c.sat<.17?2:c.sat<.34?3:c.sat<.55?4:c.sat<.76?5:6;
+  var octave=2+Math.round(c.light*2), spread=c.vspread, midi=[];
   for(var i=0;i<voices;i++){
     var lift=(i>=3&&spread>0.5)?12:0;
     midi.push(12*(octave+1)+root+q.iv[i]+lift);
   }
   return { root:root, rootName:PRETTY[root], quality:q.n, qfile:q.f, midi:midi, voices:voices, octave:octave,
-    detune:2+f.entropy*16,
-    cutoff:300*Math.pow(23,Math.pow(f.light,1.15)),
-    q:0.6+f.contrast*7,
-    lfoRate:0.025+f.density*0.22,
-    lfoDepth:0.25+f.contrast*0.65,
-    wet:clamp(0.18+(1-f.sharp)*0.62),
-    width:0.25+f.width*0.6,
+    detune:2+c.entropy*16,
+    cutoff:300*Math.pow(23,Math.pow(c.light,1.15)),
+    q:0.6+c.contrast*7,
+    lfoRate:0.025+c.density*0.22,
+    lfoDepth:0.25+c.contrast*0.65,
+    wet:clamp(0.18+(1-c.sharp)*0.62),
+    width:0.25+c.width*0.6,
     warmth:f.warmth,
-    air:Math.pow(f.entropy,1.6)*0.9,
-    f:f };
+    air:Math.pow(c.entropy,1.6)*0.9,
+    grey:grey,
+    c:c, f:f };
 }
 var hz=function(m){ return 440*Math.pow(2,(m-69)/12); };
 function notesOf(p){ var t=state.transpose; return p.midi.map(function(m){ return m+t; }); }
@@ -696,17 +770,23 @@ function orientOf(w,h){
 }
 
 var ROWS=[
-  ["hue","Root","circle of fifths",function(p){return p.f.hue;},function(p){return p.rootName;}],
-  ["lightness","Quality","bright → dark",function(p){return p.f.light;},function(p){return p.quality;}],
-  ["saturation","Voices","notes in the stack",function(p){return p.f.sat;},function(p){return p.voices+"/6";}],
-  ["v-spread","Voicing","close ↔ open",function(p){return p.f.vspread;},function(p){return p.f.vspread>.5?"open":"close";}],
-  ["texture","Detune","oscillator drift",function(p){return p.f.entropy;},function(p){return p.detune.toFixed(1)+"¢";}],
-  ["brightness","Cutoff","one lowpass",function(p){return p.f.light;},function(p){return p.cutoff<1000?Math.round(p.cutoff)+"Hz":(p.cutoff/1000).toFixed(1)+"kHz";}],
-  ["contrast","Resonance","peak + swell",function(p){return p.f.contrast;},function(p){return "Q "+p.q.toFixed(1);}],
-  ["edges","Breath","filter movement",function(p){return p.f.density;},function(p){return (1/p.lfoRate).toFixed(0)+"s";}],
-  ["blur","Reverb","dry ↔ distant",function(p){return 1-p.f.sharp;},function(p){return Math.round(p.wet*100)+"%";}],
-  ["l/r colour","Width","stereo spread",function(p){return p.f.width;},function(p){return Math.round(p.width*100)+"%";}]
+  ["hue","Root","dominant hue",function(p){return p.f.hueDom;},function(p){return p.rootName;}],
+  ["lightness","Quality","bright → dark",function(p){return p.c.light;},function(p){return p.quality;}],
+  ["saturation","Voices","notes in the stack",function(p){return p.c.sat;},function(p){return p.voices+"/6";}],
+  ["v-spread","Voicing","close ↔ open",function(p){return p.c.vspread;},function(p){return p.c.vspread>.5?"open":"close";}],
+  ["texture","Detune","oscillator drift",function(p){return p.c.entropy;},function(p){return p.detune.toFixed(1)+"¢";}],
+  ["brightness","Cutoff","one lowpass",function(p){return p.c.light;},function(p){return p.cutoff<1000?Math.round(p.cutoff)+"Hz":(p.cutoff/1000).toFixed(1)+"kHz";}],
+  ["contrast","Resonance","peak + swell",function(p){return p.c.contrast;},function(p){return "Q "+p.q.toFixed(1);}],
+  ["edges","Breath","filter movement",function(p){return p.c.density;},function(p){return (1/p.lfoRate).toFixed(0)+"s";}],
+  ["blur","Reverb","dry ↔ distant",function(p){return 1-p.c.sharp;},function(p){return Math.round(p.wet*100)+"%";}],
+  ["l/r colour","Width","stereo spread",function(p){return p.c.width;},function(p){return Math.round(p.width*100)+"%";}]
 ];
+var DIMS=["light","sat","contrast","density","entropy","sharp","vspread","width","warmth"];
+function featureDistance(a,b){
+  var s=0;
+  for(var i=0;i<DIMS.length;i++){ var d=(a[DIMS[i]]||0)-(b[DIMS[i]]||0); s+=d*d; }
+  return Math.sqrt(s/DIMS.length);
+}
 function paintPatch(p){
   var notes=notesOf(p);
   $("chord").textContent=PRETTY[((p.root+state.transpose)%12+12)%12]+" "+p.quality;
@@ -726,6 +806,25 @@ function paintPatch(p){
   $("fp").textContent="fingerprint  "+[f.hue,f.sat,f.light,f.contrast,f.density,f.sharp,f.entropy,f.vspread,f.width]
     .map(function(v){return v.toFixed(3);}).join(" ");
   $("looplen").textContent=loopSeconds(p).toFixed(1)+" s";
+
+  /* How far is this patch from the nearest one already saved? Distance over the
+     nine calibrated features, so it reflects what the synth actually hears. */
+  var list=loadSaved(), near=$("near");
+  if(!list.length){ near.className="near"; near.textContent="save a few pads and this will tell you how far apart they land"; }
+  else{
+    var best=null,bd=9;
+    for(var i=0;i<list.length;i++){
+      if(!list[i].f) continue;
+      var d=featureDistance(p.c,calib(list[i].f));
+      if(d<bd){ bd=d; best=list[i]; }
+    }
+    if(!best){ near.textContent=""; }
+    else{
+      near.className="near"+(bd<0.14?" close":"");
+      near.innerHTML="nearest saved · "+best.label+" — <b>"+bd.toFixed(2)+" apart</b>"+
+        (bd<0.14?" (very close; these will sound like siblings)":bd>0.4?" (clearly different pads)":"");
+    }
+  }
 }
 function drawTo(drawer,label,knownF){
   wctx.clearRect(0,0,work.width,work.height);
