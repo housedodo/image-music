@@ -29,3 +29,10 @@ documented mapping rule.
 
 An image is a 2D field; music is a 2D field (time × pitch). The whole app is one honest
 projection from the first onto the second — everything else is taste.
+
+## Demo
+
+`web/demo-standalone.html` is a single self-contained file — five procedurally drawn
+scenes, the full analysis/mapping/synthesis chain, and an **angle lab** that re-analyses
+the current scene at nine angles from −12° to +12° with no temporal smoothing, to show
+how much the derived key actually moves. Open it directly in a browser; no server needed.

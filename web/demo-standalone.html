@@ -1,0 +1,524 @@
+<title>Image Music Bench</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --paper:#f6f4ef; --surface:#fffdfa; --sunken:#ece8e0;
+    --ink:#1d1c1a; --ink-2:#55524c; --ink-3:#8a857c;
+    --line:#ddd8cf;
+    --amber:#b06b1f; --amber-soft:#e9d3b0;
+    --cyan:#1b7f96;
+    --stable:#3f7d54; --drift:#a8452f;
+    --display:"Fraunces",Georgia,serif;
+    --sans:"IBM Plex Sans",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#131315; --surface:#1b1b1e; --sunken:#0e0e10;
+      --ink:#eceae5; --ink-2:#a8a49c; --ink-3:#6e6a63;
+      --line:#2c2c31;
+      --amber:#e0a458; --amber-soft:#4a3a24;
+      --cyan:#6fd4e8;
+      --stable:#7bc496; --drift:#e0806a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#131315; --surface:#1b1b1e; --sunken:#0e0e10;
+    --ink:#eceae5; --ink-2:#a8a49c; --ink-3:#6e6a63;
+    --line:#2c2c31;
+    --amber:#e0a458; --amber-soft:#4a3a24;
+    --cyan:#6fd4e8;
+    --stable:#7bc496; --drift:#e0806a;
+  }
+
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55;}
+  .wrap{max-width:1040px;margin:0 auto;padding-inline:20px;padding-block:40px 64px;}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.05;margin:0 0 10px;letter-spacing:-.015em;text-wrap:balance;}
+  h1 em{font-style:italic;color:var(--amber);}
+  .lede{color:var(--ink-2);max-width:62ch;margin:0 0 6px;font-size:16px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0 0 14px;}
+  h2{font-family:var(--display);font-weight:600;font-size:23px;margin:0 0 4px;letter-spacing:-.01em;}
+  .note{color:var(--ink-2);font-size:14px;max-width:64ch;margin:0 0 18px;}
+  section{margin-top:48px;border-top:1px solid var(--line);padding-top:28px;}
+
+  .stage{display:grid;grid-template-columns:1.25fr .9fr;gap:22px;align-items:start;}
+  @media (max-width:720px){.stage{grid-template-columns:1fr;}}
+  canvas#view{width:100%;display:block;border-radius:4px;background:var(--sunken);}
+  .frame{position:relative;}
+  .frame .tag{position:absolute;left:10px;bottom:10px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+    background:rgba(0,0,0,.55);color:#fff;padding:3px 8px;border-radius:2px;}
+
+  .scenes{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px;}
+  .scenes button{padding:0;border:1px solid var(--line);background:var(--surface);border-radius:3px;cursor:pointer;overflow:hidden;display:block;}
+  .scenes button canvas{display:block;width:100%;height:auto;}
+  .scenes button[aria-pressed="true"]{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber-soft);}
+  .scenes button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+  .scene-name{font-family:var(--mono);font-size:10px;color:var(--ink-3);padding:4px 5px;text-align:left;letter-spacing:.02em;}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:18px;}
+  .verdict{font-family:var(--display);font-size:30px;font-weight:600;line-height:1.1;margin:0;}
+  .verdict small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:400;margin-bottom:6px;}
+  .tempo{font-family:var(--mono);font-size:13px;color:var(--ink-2);margin:6px 0 16px;font-variant-numeric:tabular-nums;}
+
+  .meters{display:flex;flex-direction:column;gap:7px;}
+  .meter{display:grid;grid-template-columns:78px 1fr 34px;gap:9px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--ink-2);}
+  .meter .bar{height:5px;background:var(--sunken);border-radius:3px;overflow:hidden;}
+  .meter .bar i{display:block;height:100%;background:var(--amber);border-radius:3px;transition:width .25s ease;}
+  .meter .val{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-3);}
+
+  .voices{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);}
+  .voice{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:baseline;font-size:12.5px;padding:3px 0;color:var(--ink-3);}
+  .voice.on{color:var(--ink);}
+  .voice b{font-weight:500;}
+  .voice span{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;}
+
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px;}
+  button.act{font-family:var(--sans);font-size:14px;font-weight:500;padding:9px 20px;border-radius:3px;border:1px solid var(--ink);
+    background:var(--ink);color:var(--paper);cursor:pointer;}
+  button.act.ghost{background:transparent;color:var(--ink);}
+  button.act:hover{opacity:.85;}
+  button.act:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+  input[type=range]{accent-color:var(--amber);}
+
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;}
+  th{text-align:left;font-weight:500;color:var(--ink-3);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:0 10px 7px 0;border-bottom:1px solid var(--line);}
+  td{padding:6px 10px 6px 0;border-bottom:1px solid var(--line);color:var(--ink-2);}
+  td.key{color:var(--ink);}
+  .scroll{overflow-x:auto;}
+  .pill{display:inline-block;padding:1px 7px;border-radius:2px;font-size:10.5px;letter-spacing:.05em;}
+  .pill.ok{background:color-mix(in srgb,var(--stable) 18%,transparent);color:var(--stable);}
+  .pill.no{background:color-mix(in srgb,var(--drift) 18%,transparent);color:var(--drift);}
+  .lab-head{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;margin-bottom:14px;}
+  .score{font-family:var(--display);font-size:19px;font-weight:600;}
+  .score.ok{color:var(--stable);} .score.no{color:var(--drift);}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;}
+  @media (max-width:720px){.cols{grid-template-columns:1fr;}}
+  .cols h3{font-size:14px;margin:0 0 6px;font-weight:600;}
+  .cols p{font-size:13.5px;color:var(--ink-2);margin:0 0 14px;}
+  ul.plain{list-style:none;padding:0;margin:0;font-size:13.5px;color:var(--ink-2);}
+  ul.plain li{padding:7px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:104px 1fr;gap:12px;}
+  ul.plain li b{font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--ink);font-weight:500;text-transform:uppercase;padding-top:2px;}
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);font-family:var(--mono);}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">image-music · prototype bench</p>
+  <h1>Colour picks the key.<br>Lines pick the <em>rhythm</em>.</h1>
+  <p class="lede">Five scenes, analysed live in your browser and played through Web Audio by the mapping in <span style="font-family:var(--mono);font-size:13px">docs/MAPPING.md</span>. Pick one, press play, then run the angle lab at the bottom — it's the honest answer to "would a slightly different shot change everything?"</p>
+
+  <section style="border:0;padding-top:26px;margin-top:22px">
+    <div class="stage">
+      <div>
+        <div class="frame">
+          <canvas id="view" width="720" height="440"></canvas>
+          <span class="tag" id="viewtag">Fence, noon</span>
+        </div>
+        <div class="scenes" id="scenes"></div>
+        <div class="controls">
+          <button class="act" id="play">Play</button>
+          <button class="act ghost" id="hue">Shift hue +120°</button>
+          <label style="font-family:var(--mono);font-size:11px;color:var(--ink-3)">vol
+            <input type="range" id="vol" min="0" max="1" step="0.01" value="0.7" style="width:80px;vertical-align:middle">
+          </label>
+        </div>
+        <p class="note" style="margin-top:12px">Left→right is time, bottom→top is pitch, the lit cells are the notes actually firing. The white column is the playhead.</p>
+      </div>
+
+      <div class="panel">
+        <p class="verdict"><small>Derived key</small><span id="keyout">—</span></p>
+        <p class="tempo" id="tempoout">—</p>
+        <div class="meters" id="meters"></div>
+        <div class="voices" id="voices"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The angle lab</h2>
+    <p class="note">The same scene, re-shot at nine angles from −12° to +12°, each analysed from scratch with <b>no temporal smoothing</b> — the worst case. Raw hue wanders; the key it quantises to doesn't. That gap is the whole stability argument.</p>
+    <div class="lab-head">
+      <button class="act ghost" id="runlab">Re-run on current scene</button>
+      <span class="score" id="labscore">—</span>
+    </div>
+    <div class="scroll"><table id="labtable">
+      <thead><tr><th>Angle</th><th>Raw hue</th><th>Raw edges</th><th>Key</th><th>Mode</th><th>BPM</th><th>Verdict</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>So — does a different angle change the music?</h2>
+    <div class="cols">
+      <div>
+        <h3>No, and that's engineered, not lucky</h3>
+        <p>Every structural decision passes through three filters before it can touch a note. Tilt the camera and the raw numbers move a few percent; all three filters eat it.</p>
+        <ul class="plain">
+          <li><b>Quantise</b><span>Hue is continuous, key isn't. One key step is 30° of hue — a 12° tilt moves the circular hue mean by 1–3°, roughly a tenth of a step.</span></li>
+          <li><b>Smooth</b><span>Every feature is an exponential moving average, α = 0.15. A single odd frame contributes 15% of itself and is gone in four frames.</span></li>
+          <li><b>Gate</b><span>Key, mode and tempo need the feature to move &gt;0.08 <em>and</em> hold for two frames. A wobble that crosses back never commits.</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Yes — when the picture is actually different</h3>
+        <p>The filters absorb noise, not signal. These changes should and do rewrite the piece, which is what makes it an instrument rather than a random generator:</p>
+        <ul class="plain">
+          <li><b>New subject</b><span>Fence to horizon: vertical energy collapses, the hits become pads. Genre-level change.</span></li>
+          <li><b>New light</b><span>Golden hour to blue hour moves hue far enough to walk several steps round the circle of fifths.</span></li>
+          <li><b>Reframing</b><span>Zooming until a red door fills the frame is a new photo, not a new angle — the hue mean is now the door's.</span></li>
+          <li><b>Hue shift</b><span>Try the +120° button above. Same structure, same rhythm, key moves four steps. Rhythm is geometry; harmony is colour.</span></li>
+        </ul>
+        <p style="margin-top:14px">The one genuine failure mode: a scene sitting exactly on a quantisation boundary, where the key flips back and forth. The gate's hysteresis is what stops that, and it's the first thing to widen if you ever hear it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Application or web?</h2>
+    <p class="note" style="max-width:70ch">Web, and for longer than you'd think. This page is the whole stack — analysis, mapping, synthesis, sequencing — in one file with no build step, running on a phone from a link. A camera-driven version is <span style="font-family:var(--mono);font-size:13px">getUserMedia</span> plus the same code. You only need a native app for three things: background audio, low-latency MIDI hardware, or shipping it as a DAW plugin — and all three are Stage 5 concerns. What's worth splitting out early is an offline Python renderer that emits MIDI, so a musician can open the result in Ableton; it shares this page's mapping constants and nothing else.</p>
+  </section>
+
+  <footer>Analysis at 32×16 and 128×128 · polyphony capped at 12 · all audio synthesised live, nothing sampled</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- scenes: drawn procedurally so the analyser gets real, varied input ---------- */
+const SCENES = [
+  { name:"Fence, noon", tag:"Fence, noon", draw(c,w,h,hs){
+      grad(c,w,h,[[0,hsl(205,55,62,hs)],[1,hsl(195,40,80,hs)]]);
+      c.fillStyle=hsl(95,30,38,hs); c.fillRect(0,h*.72,w,h*.28);
+      for(let x=0;x<w;x+=w/26){ c.fillStyle=hsl(30,18,34,hs); c.fillRect(x,h*.34,w/70,h*.44); }
+      c.fillStyle=hsl(30,18,30,hs); c.fillRect(0,h*.40,w,h*.012); c.fillRect(0,h*.66,w,h*.012);
+    }},
+  { name:"Sea, fog", tag:"Sea horizon, fog", draw(c,w,h,hs){
+      grad(c,w,h,[[0,hsl(210,12,78,hs)],[.55,hsl(205,10,72,hs)],[.56,hsl(200,14,55,hs)],[1,hsl(200,16,46,hs)]]);
+      for(let i=0;i<40;i++){ c.fillStyle="rgba(255,255,255,"+(0.02+Math.random()*0.05)+")";
+        c.fillRect(0,h*.57+Math.random()*h*.42,w,1+Math.random()*2); }
+    }},
+  { name:"Stairwell", tag:"Stairwell, diagonals", draw(c,w,h,hs){
+      c.fillStyle=hsl(35,14,22,hs); c.fillRect(0,0,w,h);
+      for(let i=0;i<9;i++){ const y=h-i*h/9;
+        c.fillStyle=hsl(35,20,32+i*4,hs); c.beginPath();
+        c.moveTo(0,y); c.lineTo(w,y-h*.55); c.lineTo(w,y-h*.55+16); c.lineTo(0,y+16); c.fill(); }
+      c.strokeStyle=hsl(42,60,68,hs); c.lineWidth=3;
+      for(let i=0;i<4;i++){ c.beginPath(); c.moveTo(0,h*.9-i*40); c.lineTo(w,h*.32-i*40); c.stroke(); }
+    }},
+  { name:"Market", tag:"Market stall, saturated", draw(c,w,h,hs){
+      c.fillStyle=hsl(25,45,26,hs); c.fillRect(0,0,w,h);
+      const hues=[8,32,50,340,18,64];
+      for(let i=0;i<6;i++){ c.fillStyle=hsl(hues[i],82,52,hs);
+        c.fillRect((i%3)*w/3+6,Math.floor(i/3)*h/2+6,w/3-12,h/2-12); }
+      for(let i=0;i<900;i++){ c.fillStyle="rgba(0,0,0,"+(Math.random()*.32)+")";
+        c.fillRect(Math.random()*w,Math.random()*h,3,3); }
+    }},
+  { name:"Night", tag:"Night windows", draw(c,w,h,hs){
+      c.fillStyle=hsl(230,35,9,hs); c.fillRect(0,0,w,h);
+      for(let b=0;b<7;b++){ const bw=w/7, bh=h*(.35+Math.random()*.5);
+        c.fillStyle=hsl(230,22,14,hs); c.fillRect(b*bw+4,h-bh,bw-8,bh);
+        for(let y=h-bh+14;y<h-16;y+=26) for(let x=b*bw+14;x<b*bw+bw-18;x+=22)
+          if(Math.random()>.55){ c.fillStyle=hsl(45,85,66,hs); c.fillRect(x,y,11,13); } }
+    }},
+];
+function grad(c,w,h,stops){ const g=c.createLinearGradient(0,0,0,h); for(const[p,col]of stops)g.addColorStop(p,col); c.fillStyle=g; c.fillRect(0,0,w,h); }
+function hsl(hue,s,l,shift){ return "hsl("+(((hue+(shift||0))%360)+360)%360+","+s+"%,"+l+"%)"; }
+
+/* ---------- analysis (docs/MAPPING.md levels 0–2) ---------- */
+const COLS=32, ROWS=16, MID=128;
+const clamp01=x=>Math.min(1,Math.max(0,x));
+const luma=(r,g,b)=>(0.2126*r+0.7152*g+0.0722*b)/255;
+function hsv(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn; let h=0;
+  if(d){ if(mx===r)h=((g-b)/d+6)%6; else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4; h/=6; }
+  return [h, mx?d/mx:0, mx]; }
+
+function pixels(src,w,h){ const c=document.createElement("canvas"); c.width=w;c.height=h;
+  const x=c.getContext("2d",{willReadFrequently:true}); x.drawImage(src,0,0,w,h); return x.getImageData(0,0,w,h); }
+
+function analyse(src){
+  const mid=pixels(src,MID,MID), small=pixels(src,COLS,ROWS), d=mid.data, n=d.length/4;
+  /* circular hue mean — a linear mean makes red average to cyan */
+  let sx=0,sy=0,wsum=0,satS=0,satN=0,vS=0,v2S=0,rS=0,bS=0;
+  for(let i=0;i<d.length;i+=4){ const[H,S,V]=hsv(d[i],d[i+1],d[i+2]), w=S*V;
+    sx+=Math.cos(H*6.2831853)*w; sy+=Math.sin(H*6.2831853)*w; wsum+=w;
+    if(V>.15){satS+=S;satN++;} vS+=V; v2S+=V*V; rS+=d[i]; bS+=d[i+2]; }
+  let hue=wsum>1e-6?Math.atan2(sy,sx)/6.2831853:0; if(hue<0)hue+=1;
+  const mean=vS/n;
+
+  /* Sobel: total energy + orientation. A vertical line has a horizontal gradient. */
+  const g=new Float32Array(MID*MID);
+  for(let i=0,p=0;i<d.length;i+=4,p++) g[p]=luma(d[i],d[i+1],d[i+2]);
+  let tot=0,vert=0,horiz=0,diag=0,slope=0;
+  for(let y=1;y<MID-1;y++) for(let x=1;x<MID-1;x++){
+    const at=(dx,dy)=>g[(y+dy)*MID+(x+dx)];
+    const gx=-at(-1,-1)-2*at(-1,0)-at(-1,1)+at(1,-1)+2*at(1,0)+at(1,1);
+    const gy=-at(-1,-1)-2*at(0,-1)-at(1,-1)+at(-1,1)+2*at(0,1)+at(1,1);
+    const m=Math.hypot(gx,gy); if(m<.08)continue; tot+=m;
+    const a=Math.abs(Math.atan2(gy,gx));
+    if(a<Math.PI/8||a>7*Math.PI/8) vert+=m;
+    else if(a>3*Math.PI/8&&a<5*Math.PI/8) horiz+=m;
+    else { diag+=m; slope+= a<Math.PI/2 ? -m : m; }
+  }
+  const sum=vert+horiz+diag||1, sh=[vert/sum,horiz/sum,diag/sum];
+  const iso=clamp01(1-(Math.max.apply(null,sh)-Math.min.apply(null,sh))*1.5);
+
+  /* texture entropy -> noise layer; laplacian -> sharpness -> reverb */
+  let ent=0,tiles=0;
+  for(let ty=0;ty+8<=MID;ty+=8) for(let tx=0;tx+8<=MID;tx+=8){
+    const hist=new Uint8Array(16);
+    for(let y=0;y<8;y++) for(let x=0;x<8;x++) hist[Math.min(15,(g[(ty+y)*MID+tx+x]*16)|0)]++;
+    let e=0; for(let k=0;k<16;k++){ const cnt=hist[k]; if(cnt){const p=cnt/64; e-=p*Math.log2(p);} }
+    ent+=e/4; tiles++; }
+  let lap=0,ln=0;
+  for(let y=1;y<MID-1;y++) for(let x=1;x<MID-1;x++){
+    lap+=Math.abs(4*g[y*MID+x]-g[y*MID+x-1]-g[y*MID+x+1]-g[(y-1)*MID+x]-g[(y+1)*MID+x]); ln++; }
+
+  const grid=new Float32Array(COLS*ROWS), sd=small.data;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){ const i=(r*COLS+c)*4; grid[r*COLS+c]=luma(sd[i],sd[i+1],sd[i+2]); }
+
+  return { hue, sat:satN?satS/satN:0, val:mean,
+    contrast:Math.sqrt(Math.max(0,v2S/n-mean*mean))*2,
+    warmth:clamp01(((rS-bS)/(rS+bS+1e-6))*2+.5),
+    edgeDensity:clamp01(tot/((MID-2)*(MID-2))*1.6),
+    orient:{vert:sh[0],horiz:sh[1],diag:sh[2],iso},
+    slope:Math.sign(slope)||1,
+    entropy:clamp01(ent/tiles), sharpness:clamp01(lap/ln*6), grid };
+}
+
+/* ---------- mapping ---------- */
+const FIFTHS=[0,7,2,9,4,11,6,1,8,3,10,5];
+const NAMES=["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+const MODES=[["Lydian",[0,2,4,6,7,9,11]],["Ionian",[0,2,4,5,7,9,11]],["Mixolydian",[0,2,4,5,7,9,10]],
+  ["Dorian",[0,2,3,5,7,9,10]],["Aeolian",[0,2,3,5,7,8,10]],["Phrygian",[0,1,3,5,7,8,10]],["Locrian",[0,1,3,5,6,8,10]]];
+
+function Smoother(a,hy){ this.a=a||.15; this.hy=hy||.08; this.s={}; this.held={}; this.pend={}; }
+Smoother.prototype.sm=function(k,v){ const p=this.s[k]; return this.s[k]= p===undefined? v : p+this.a*(v-p); };
+Smoother.prototype.gate=function(k,v){ if(this.held[k]===undefined) return this.held[k]=v;
+  if(Math.abs(v-this.held[k])<this.hy){ this.pend[k]=0; return this.held[k]; }
+  this.pend[k]=(this.pend[k]||0)+1;
+  if(this.pend[k]>=2){ this.pend[k]=0; this.held[k]=v; } return this.held[k]; };
+
+function chordOf(sat){ return sat<.15?[0,4] : sat<.35?[0,2,4] : sat<.60?[0,2,4,6] : sat<.80?[0,2,4,6,8] : [0,2,4,6,8,10]; }
+
+function map(f,S){
+  const hue=S.gate("hue",S.sm("hue",f.hue)), val=S.gate("val",S.sm("val",f.val));
+  const sat=S.sm("sat",f.sat), contrast=S.sm("contrast",f.contrast);
+  const dens=S.gate("dens",S.sm("dens",f.edgeDensity));
+  const ent=S.sm("ent",f.entropy), warm=S.sm("warm",f.warmth), sharp=S.sm("sharp",f.sharpness);
+  const mode=MODES[Math.min(6,Math.round((1-val)*6))];
+  return { root:FIFTHS[Math.round(hue*12)%12], rootName:NAMES[FIFTHS[Math.round(hue*12)%12]],
+    modeName:mode[0], scale:mode[1], octave:2+Math.round(val*3),
+    bpm:Math.round((60+80*dens)/4)*4, sub:[4,8,8,16][Math.min(3,Math.floor(dens*4))],
+    chord:chordOf(sat), velRange:.25+.75*clamp01(contrast),
+    noiseGain:Math.pow(clamp01(ent),1.5), warmth:warm,
+    wet:clamp01(.15+(1-sharp)*.6), cutoff:400+Math.pow(sharp,1.5)*6000,
+    orient:f.orient, slope:f.slope, grid:f.grid,
+    raw:{hue:hue,sat:sat,val:val,contrast:contrast,dens:dens,ent:ent,warm:warm,sharp:sharp} };
+}
+function scaleAt(sc,d){ const L=sc.length; return sc[((d%L)+L)%L]+12*Math.floor(d/L); }
+function degMidi(p,d){ return 12*(p.octave+1)+p.root+scaleAt(p.scale,d); }
+
+/* top-N per column is what creates space; a fixed threshold gives silence or mud */
+function events(p,maxV){
+  maxV=maxV||3; const out=[];
+  for(let c=0;c<COLS;c++){
+    const col=[]; for(let r=0;r<ROWS;r++) col.push({r:r,v:p.grid[r*COLS+c]});
+    col.sort((a,b)=>b.v-a.v);
+    const top=col.slice(0,maxV).filter(x=>x.v>.12); if(!top.length)continue;
+    const loud=top[0].v||1;
+    for(let i=0;i<top.length;i++) out.push({ step:c, row:top[i].r, col:c,
+      midi:degMidi(p,ROWS-1-top[i].r), velocity:.25+p.velRange*(top[i].v/loud)*.75,
+      pan:((c/COLS)*2-1)*.6 });
+  }
+  return out;
+}
+
+/* ---------- audio ---------- */
+const hz=m=>440*Math.pow(2,(m-69)/12);
+let A=null;
+function Audio(){
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const master=ctx.createGain(); master.gain.value=.7;
+  const comp=ctx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=6;
+  master.connect(comp).connect(ctx.destination);
+  const dry=ctx.createGain(), wet=ctx.createGain(), rev=ctx.createConvolver();
+  const L=ctx.sampleRate*2.4, buf=ctx.createBuffer(2,L,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch);
+    for(let i=0;i<L;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/L,2.6); }
+  rev.buffer=buf; dry.connect(master); wet.connect(rev).connect(master);
+  const filt=ctx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=3000;
+  filt.connect(dry); filt.connect(wet);
+  const nb=ctx.createBuffer(1,ctx.sampleRate*.5,ctx.sampleRate), nd=nb.getChannelData(0);
+  for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
+  return { ctx,master,dry,wet,filt,nb,voices:0,cap:12 };
+}
+function note(a,midi,t,dur,vel,warm,pan,oct){
+  if(a.voices>=a.cap)return; a.voices++;
+  const o=a.ctx.createOscillator(); o.type= warm>.6?"sawtooth": warm>.35?"triangle":"sine";
+  o.frequency.value=hz(midi);
+  const g=a.ctx.createGain(), pn=a.ctx.createStereoPanner(); pn.pan.value=pan||0;
+  const atk=.002+(1-warm)*.03, peak=Math.max(.02,vel)*.2;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(peak,t+atk);
+  g.gain.exponentialRampToValueAtTime(.0005,t+Math.max(atk+.05,dur));
+  o.connect(g).connect(pn).connect(a.filt); o.start(t); o.stop(t+dur+.1);
+  o.onended=function(){a.voices--;};
+}
+function pad(a,notes,t,dur,gain,warm){
+  for(let i=0;i<notes.length;i++){
+    const o=a.ctx.createOscillator(); o.type= warm>.5?"sawtooth":"sine";
+    o.frequency.value=hz(notes[i]); o.detune.value=(Math.random()-.5)*8;
+    const g=a.ctx.createGain();
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain*.075,t+.4);
+    g.gain.setValueAtTime(gain*.075,t+dur-.6); g.gain.exponentialRampToValueAtTime(.0005,t+dur);
+    o.connect(g).connect(a.filt); o.start(t); o.stop(t+dur+.1);
+  }
+}
+function noise(a,t,dur,gain){
+  const s=a.ctx.createBufferSource(); s.buffer=a.nb;
+  const bp=a.ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=3000+Math.random()*3000;
+  const g=a.ctx.createGain(); g.gain.setValueAtTime(gain*.1,t); g.gain.exponentialRampToValueAtTime(.0005,t+dur);
+  s.connect(bp).connect(g).connect(a.filt); s.start(t); s.stop(t+dur);
+}
+
+/* lookahead scheduler — timing from ctx.currentTime, never setTimeout */
+let timer=null, step=0, nextT=0, playing=false;
+function tick(){
+  const p=state.params; if(!p)return;
+  while(nextT < A.ctx.currentTime+.12){
+    const sd=60/p.bpm/(p.sub/4);
+    schedule(p,state.events,nextT,sd);
+    nextT+=sd; step=(step+1)%COLS;
+  }
+}
+function schedule(p,ev,t,sd){
+  const o=p.orient;
+  if(step===0){
+    A.filt.frequency.setTargetAtTime(p.cutoff,A.ctx.currentTime,.2);
+    A.wet.gain.setTargetAtTime(p.wet,A.ctx.currentTime,.2);
+    A.dry.gain.setTargetAtTime(1-p.wet*.5,A.ctx.currentTime,.2);
+    pad(A,p.chord.map(d=>12*(p.octave+1)+p.root+scaleAt(p.scale,d)),t,sd*COLS,.3+o.horiz,p.warmth);
+    note(A,12*p.octave+p.root,t,sd*COLS*.9,.9,1,0);          /* the bass root */
+  }
+  const gg=.4+o.vert;                                          /* vertical lines = onsets */
+  for(let i=0;i<ev.length;i++) if(ev[i].step===step)
+    note(A,ev[i].midi,t,sd*(.4+o.horiz*2.5),ev[i].velocity*gg,p.warmth,ev[i].pan);
+  if(o.diag>.25 && step%2===0){                                /* diagonals = arpeggio */
+    const i= p.slope>0? step : COLS-step;
+    note(A,12*(p.octave+2)+p.root+scaleAt(p.scale,i%(p.scale.length*2)),t,sd*.8,o.diag,p.warmth,.3);
+  }
+  if(p.noiseGain*o.iso>.12 && step%4===2) noise(A,t,sd*.5,p.noiseGain*o.iso);
+  const at=t; setTimeout(function(){ state.head=(step+COLS-1)%COLS; paint(); },
+    Math.max(0,(at-A.ctx.currentTime)*1000));
+}
+
+/* ---------- view ---------- */
+const state={ scene:0, hueShift:0, params:null, events:[], head:-1 };
+const view=document.getElementById("view"), vctx=view.getContext("2d",{willReadFrequently:true});
+const work=document.createElement("canvas"); work.width=720; work.height=440;
+const wctx=work.getContext("2d",{willReadFrequently:true});
+
+function renderScene(ctx,w,h,idx,hueShift,angle){
+  ctx.save(); ctx.clearRect(0,0,w,h);
+  if(angle){ /* re-shoot: rotate about centre and scale up so no empty corners */
+    ctx.translate(w/2,h/2); ctx.rotate(angle*Math.PI/180); ctx.scale(1.25,1.25); ctx.translate(-w/2,-h/2); }
+  SCENES[idx].draw(ctx,w,h,hueShift);
+  ctx.restore();
+}
+function paint(){
+  const w=view.width,h=view.height;
+  vctx.drawImage(work,0,0);
+  vctx.fillStyle="rgba(8,8,10,0.34)"; vctx.fillRect(0,0,w,h);
+  const cw=w/COLS, ch=h/ROWS;
+  for(let i=0;i<state.events.length;i++){ const e=state.events[i];
+    vctx.fillStyle= e.col===state.head? "rgba(255,255,255,.92)":"rgba(255,255,255,.2)";
+    vctx.fillRect(e.col*cw+1,e.row*ch+1,cw-2,ch-2); }
+  if(state.head>=0){ vctx.fillStyle="rgba(120,220,255,.85)"; vctx.fillRect(state.head*cw,0,2,h); }
+}
+
+const METERS=[["saturation","sat"],["lightness","val"],["contrast","contrast"],
+  ["edges","dens"],["texture","ent"],["warmth","warm"],["sharpness","sharp"]];
+function refresh(){
+  renderScene(wctx,work.width,work.height,state.scene,state.hueShift,0);
+  const f=analyse(work), S=new Smoother();
+  let p; for(let i=0;i<8;i++) p=map(f,S);          /* settle the EMA */
+  state.params=p; state.events=events(p);
+  document.getElementById("keyout").textContent=p.rootName+" "+p.modeName;
+  document.getElementById("tempoout").textContent=
+    p.bpm+" BPM · 1/"+p.sub+" grid · "+p.chord.length+"-note chord · octave "+p.octave;
+  document.getElementById("meters").innerHTML=METERS.map(function(m){
+    const v=clamp01(p.raw[m[1]]);
+    return '<div class="meter"><span>'+m[0]+'</span><span class="bar"><i style="width:'+(v*100).toFixed(0)+'%"></i></span><span class="val">'+v.toFixed(2)+'</span></div>';
+  }).join("");
+  const o=p.orient, vs=[["Hits",'vertical lines',o.vert],["Pads",'horizontal lines',o.horiz],
+    ["Arpeggio",'diagonals',o.diag],["Noise",'texture',o.iso*p.noiseGain]];
+  document.getElementById("voices").innerHTML=vs.map(function(v){
+    return '<div class="voice '+(v[2]>.2?"on":"")+'"><span style="font-family:var(--sans);font-size:12.5px"><b>'+v[0]+'</b> · '+v[1]+'</span><span>'+v[2].toFixed(2)+'</span></div>';
+  }).join("");
+  document.getElementById("viewtag").textContent=SCENES[state.scene].tag+(state.hueShift?" · hue "+state.hueShift+"°":"");
+  paint();
+  runLab();
+}
+
+/* thumbnails */
+const strip=document.getElementById("scenes");
+SCENES.forEach(function(s,i){
+  const b=document.createElement("button"); b.setAttribute("aria-pressed", i===0?"true":"false");
+  const c=document.createElement("canvas"); c.width=160; c.height=100;
+  renderScene(c.getContext("2d"),160,100,i,0,0);
+  b.appendChild(c);
+  const n=document.createElement("div"); n.className="scene-name"; n.textContent=s.name; b.appendChild(n);
+  b.addEventListener("click",function(){
+    state.scene=i;
+    Array.prototype.forEach.call(strip.children,function(x,j){ x.setAttribute("aria-pressed", j===i?"true":"false"); });
+    refresh();
+  });
+  strip.appendChild(b);
+});
+
+/* ---------- angle lab ---------- */
+function runLab(){
+  const body=document.querySelector("#labtable tbody"); body.innerHTML="";
+  const lab=document.createElement("canvas"); lab.width=720; lab.height=440;
+  const lc=lab.getContext("2d",{willReadFrequently:true});
+  const rows=[], keys={};
+  for(let a=-12;a<=12;a+=3){
+    renderScene(lc,lab.width,lab.height,state.scene,state.hueShift,a);
+    const f=analyse(lab), S=new Smoother();
+    let p; for(let i=0;i<8;i++) p=map(f,S);       /* fresh smoother: no temporal help */
+    keys[p.rootName+p.modeName]=1;
+    rows.push({a:a,hue:f.hue,dens:f.edgeDensity,key:p.rootName,mode:p.modeName,bpm:p.bpm});
+  }
+  const base=rows[Math.floor(rows.length/2)];
+  body.innerHTML=rows.map(function(r){
+    const same = r.key===base.key && r.mode===base.mode;
+    return "<tr><td>"+(r.a>0?"+":"")+r.a+"°</td><td>"+r.hue.toFixed(3)+"</td><td>"+r.dens.toFixed(3)+
+      '</td><td class="key">'+r.key+"</td><td>"+r.mode+"</td><td>"+r.bpm+
+      '</td><td><span class="pill '+(same?"ok":"no")+'">'+(same?"held":"moved")+"</span></td></tr>";
+  }).join("");
+  const n=Object.keys(keys).length;
+  const hues=rows.map(function(r){return r.hue;});
+  const spread=(Math.max.apply(null,hues)-Math.min.apply(null,hues))*360;
+  const el=document.getElementById("labscore");
+  el.className="score "+(n===1?"ok":"no");
+  el.textContent = n===1
+    ? "One key across all 9 angles — raw hue moved "+spread.toFixed(1)+"°, well inside the 30° that buys a key change."
+    : n+" different keys across 9 angles — raw hue moved "+spread.toFixed(1)+"°, enough to cross a boundary.";
+}
+document.getElementById("runlab").addEventListener("click",runLab);
+
+/* ---------- controls ---------- */
+document.getElementById("hue").addEventListener("click",function(){
+  state.hueShift=(state.hueShift+120)%360; refresh();
+});
+document.getElementById("vol").addEventListener("input",function(e){ if(A) A.master.gain.value=+e.target.value; });
+document.getElementById("play").addEventListener("click",function(){
+  if(!A) A=Audio();                                  /* must be created inside a gesture */
+  A.ctx.resume();
+  if(playing){ clearInterval(timer); playing=false; state.head=-1; paint(); this.textContent="Play"; }
+  else { step=0; nextT=A.ctx.currentTime+.1; timer=setInterval(tick,25); playing=true; this.textContent="Stop"; }
+});
+
+refresh();
+})();
+</script>
