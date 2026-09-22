@@ -140,9 +140,9 @@
     /* with the panels stripped, the chord and the export button are just
        two more rows under the transport, so no reordering is needed */
     body:not(.expanded) .acts{grid-template-columns:1fr;}
-    body:not(.expanded) .patch{background:none;border:0;padding:10px 2px 0;}
-    body:not(.expanded) .chordline{font-size:20px;margin:0;}
-    body:not(.expanded) .voicing{margin:0 0 2px;}
+    body:not(.expanded) .patch{display:none;}
+    body:not(.expanded) .step{display:none;}
+    body:not(.expanded) .transport{margin-top:8px;}
     body:not(.expanded) .export{background:none;border:0;padding:0;margin-top:10px;}
     body:not(.expanded) #exp{min-height:48px;}
     body:not(.expanded) .status{text-align:center;}
@@ -190,7 +190,7 @@
 
       <div class="acts">
         <label class="fake" id="shootLbl">📷 Take photo<input type="file" id="shoot" accept="image/*" capture="environment"></label>
-        <label class="fake expert">Upload<input type="file" id="pick" accept="image/*"></label>
+        <label class="fake">🖼️ Upload photo<input type="file" id="pick" accept="image/*"></label>
         <button id="live" class="expert">Live camera</button>
         <button id="save" class="expert">Save pad</button>
       </div>
