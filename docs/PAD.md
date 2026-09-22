@@ -346,3 +346,54 @@ fish and chips      G 6/9     joyful   G2 D3 | G3 B3 E4 | A4 B4
 
 `tools/calibration/voicing.mjs` checks the whole corpus for duplicate pitches, rough low
 intervals and detune extremes.
+
+
+---
+
+# Mobile audio
+
+Crackling on a phone is a buffer underrun: the audio thread cannot refill its buffer before
+the hardware needs it. The graph was asking too much of a phone in three ways.
+
+## 1. The latency hint (the big one)
+
+`new AudioContext()` defaults to `latencyHint: "interactive"`, which asks for the **smallest
+buffer the device will give** — right for a drum pad, wrong for a drone. A sustained pad has
+no latency requirement at all:
+
+```js
+new AudioContext({latencyHint: "playback"})
+```
+
+This alone gives the audio thread several times longer to do the same work.
+
+## 2. Convolution length
+
+A 4.2 s stereo impulse is 370k samples and is by far the most expensive node in the graph.
+Cut to 2.6 s stereo (230k), which for a pad is inaudible as a change.
+
+## 3. Voice count
+
+`SLOTS` 5 → 4, so 3 layers × 4 slots × 2 oscillators = 24 running oscillators plus 4 LFOs,
+down from 34 total. Silent slots still cost CPU in Web Audio — a node at zero gain is still
+processed — so the budget is set by the graph's shape, not by how many notes are sounding.
+
+## Clipping is the other crackle
+
+Nine detuned voices plus delay and reverb can sum past 1.0, and clipping at the output
+sounds much like an underrun. The master chain is now:
+
+```
+out → highpass 48 Hz → compressor (−17 dB, 5:1) → trim 0.72 → limiter (−1.5 dB, 20:1) → destination
+```
+
+## Low-power path
+
+Devices reporting ≤4 cores, or a coarse pointer with ≤6 cores, additionally get a **mono
+1.9 s impulse** and **no chorus** (the two modulated delays are skipped, not just muted —
+a muted node still costs). Detection is `navigator.hardwareConcurrency` plus
+`matchMedia("(pointer: coarse)")`.
+
+**The offline render is never throttled.** It has no deadline, so `graph(ctx)` is called
+without the eco flag for exports: a pad exported from a weak phone still gets the full
+stereo tail and the chorus.

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 12:05 UTC">
+<html lang="en" data-build="2026-09-22 12:17 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -682,7 +682,7 @@ function buildPatch(f){
     var set = role==="bass" ? BASS : q[role];
     /* saturation decides how much of the role's set sounds */
     var want = role==="bass" ? 2 : (bc.sat<.30?2 : bc.sat<.62?3 : 4);
-    want = Math.max(2, Math.min(set.length, want + (dom>0.62?-1:dom<0.34?1:0)));
+    want = Math.max(2, Math.min(Math.min(set.length,SLOTS), want + (dom>0.62?-1:dom<0.34?1:0)));
 
     var base=ROLE_BASE[role];
     /* lift the top voice clear of whatever the middle one ended on: a whole
@@ -703,7 +703,7 @@ function buildPatch(f){
 
     /* a genuine second colour joins the top voice, never the bass */
     var second=null;
-    if(role==="top" && f.hue2Share>0.16 && !br.grey){
+    if(role==="top" && notes.length<SLOTS && f.hue2Share>0.16 && !br.grey){
       var pc2=(br.pc+snap(FIFTHS[Math.round(f.hue2*12)%12],br.pc,q.sc,true))%12;
       var m2=base+pc2, tries=0;
       /* the added colour needs the same clearance as the layer it joins */
@@ -763,19 +763,38 @@ var hz=function(m){ return 440*Math.pow(2,(m-69)/12); };
 /* ================= graph ================= */
 /* Built identically for the live context and the offline render, so what you
    export is what you heard. Fixed shape: MAXL layers x 5 slots, unused silent. */
-var SLOTS=5;
-function impulse(ctx,sec,decay){
-  var L=Math.floor(ctx.sampleRate*sec), b=ctx.createBuffer(2,L,ctx.sampleRate);
-  for(var ch=0;ch<2;ch++){ var d=b.getChannelData(ch);
+var SLOTS=4;          /* max notes per layer; 4x3x2 = 24 oscillators, not 30 */
+var IR_SECONDS=2.6;   /* 4.2s of stereo convolution is the heaviest node on a phone */
+function impulse(ctx,sec,decay,chans){
+  chans=chans||2;
+  var L=Math.floor(ctx.sampleRate*sec), b=ctx.createBuffer(chans,L,ctx.sampleRate);
+  for(var ch=0;ch<chans;ch++){ var d=b.getChannelData(ch);
     for(var i=0;i<L;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/L,decay); }
   return b;
 }
-function graph(ctx){
+/* Phones with few cores get a cheaper room and no chorus. The offline render
+   is never throttled -- it has no deadline, so an export is always full
+   quality whatever it was played back on. */
+var LOWPOWER=(function(){
+  try{
+    var cores=navigator.hardwareConcurrency||8;
+    var phone=window.matchMedia && matchMedia("(pointer: coarse)").matches;
+    return cores<=4 || (phone && cores<=6);
+  }catch(e){ return false; }
+})();
+function graph(ctx,eco){
   var out=ctx.createGain(); out.gain.value=0;
   var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-17; comp.ratio.value=5;
   /* clears sub-bass rumble that the low layer's detuning otherwise stirs up */
   var hp=ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=48; hp.Q.value=0.7;
-  out.connect(hp); hp.connect(comp); comp.connect(ctx.destination);
+  /* a brick wall after it: nine detuned voices plus delay and reverb can sum
+     past 1.0, and clipping at the output crackles just like an underrun */
+  var lim=ctx.createDynamicsCompressor();
+  lim.threshold.value=-1.5; lim.ratio.value=20; lim.knee.value=0;
+  lim.attack.value=0.003; lim.release.value=0.25;
+  var trim=ctx.createGain(); trim.gain.value=0.72;
+  out.connect(hp); hp.connect(comp); comp.connect(trim); trim.connect(lim);
+  lim.connect(ctx.destination);
 
   var bus=ctx.createGain(); bus.gain.value=1;
 
@@ -791,8 +810,10 @@ function graph(ctx){
   chLfo.connect(chAmtB); chAmtB.connect(chB.delayTime);
   chLfo.start();
   var chMix=ctx.createGain(); chMix.gain.value=0.5;
-  bus.connect(chA); chA.connect(chPanA); chPanA.connect(chMix);
-  bus.connect(chB); chB.connect(chPanB); chPanB.connect(chMix);
+  if(!eco){
+    bus.connect(chA); chA.connect(chPanA); chPanA.connect(chMix);
+    bus.connect(chB); chB.connect(chPanB); chPanB.connect(chMix);
+  }
 
   /* feedback delay, damped so repeats darken instead of piling up */
   var dly=ctx.createDelay(2.0); dly.delayTime.value=0.3;
@@ -804,7 +825,8 @@ function graph(ctx){
   dly.connect(dlyMix);
 
   var pre=ctx.createDelay(0.25); pre.delayTime.value=0.02;
-  var rev=ctx.createConvolver(); rev.buffer=impulse(ctx,4.2,3.1);
+  var rev=ctx.createConvolver();
+  rev.buffer=eco ? impulse(ctx,1.9,2.5,1) : impulse(ctx,IR_SECONDS,2.7,2);
   var wet=ctx.createGain(), dry=ctx.createGain();
   bus.connect(dry); chMix.connect(dry); dlyMix.connect(dry);
   bus.connect(pre); chMix.connect(pre); dlyMix.connect(pre);
@@ -891,7 +913,18 @@ function applyTo(G,p,glide){
 
 /* ================= live ================= */
 var A=null, master=0.75;
-function live(){ if(!A) A=graph(new (window.AudioContext||window.webkitAudioContext)()); return A; }
+function live(){
+  if(!A){
+    var C=window.AudioContext||window.webkitAudioContext, ctx;
+    /* "playback" asks for the largest buffer the browser will give. A drone
+       needs no low latency, and the default "interactive" hint is the usual
+       cause of crackling on phones -- the audio thread cannot refill a tiny
+       buffer in time while the page is also drawing. */
+    try{ ctx=new C({latencyHint:"playback"}); }catch(e){ ctx=new C(); }
+    A=graph(ctx,LOWPOWER);
+  }
+  return A;
+}
 
 /* ================= offline render ================= */
 function loopSeconds(p){
