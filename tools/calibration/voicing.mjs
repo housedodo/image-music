@@ -1,6 +1,6 @@
 import fs from 'fs';
 import {analysePixels,buildPatch} from './core.js';
-const corpus=JSON.parse(fs.readFileSync('corpus.json'));
+const corpus=JSON.parse(fs.readFileSync('corpus2.json'));
 const N=['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
 /* musically correct roughness rule: a semitone or whole tone anywhere below
    MIDI 60 beats; a third is only a problem below MIDI 48 */
@@ -25,4 +25,4 @@ console.log("photo             chord         mood        waves               rou
 rows.sort((a,b)=>a[2].localeCompare(b[2])).forEach(r=>console.log("  "+r[0].padEnd(16),r[1].padEnd(13),
   r[2].padEnd(11),r[3].padEnd(20),r[4].padEnd(10),r[5]));
 console.log("\n  duplicate pitches:",dupes,"   photos with rough low intervals:",bad,"/",rows.length);
-console.log("  max detune across corpus:",maxDet.toFixed(1)+"c  (was 17.4c)");
+console.log("  max detune across corpus:",maxDet.toFixed(1)+"c  (bass stays tight; body and top drift more by design)");

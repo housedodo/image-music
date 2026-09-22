@@ -253,7 +253,7 @@
         <h2>Patch</h2>
         <p class="chordline" id="chord">—</p>
         <p class="voicing" id="voicing">—</p>
-        <details id="rowsWrap" open><summary>All fifteen mappings</summary><div id="rows"></div></details>
+        <details id="rowsWrap" open><summary>All seventeen mappings</summary><div id="rows"></div></details>
         <div class="bandlegend expert" id="bandlegend"></div>
         <p class="near" id="near"></p>
         <p class="fp" id="fp"></p>
@@ -670,7 +670,7 @@ var TIMBRES=[
   {n:"ember", h:[1,0.55,0.42,0.24,0.16,0.10,0.06,0.04]},  /* red      — reedy, burning  */
   {n:"gold",  h:[1,0.18,0.55,0.12,0.35,0.08,0.22,0.14]},  /* yellow   — bell, metallic  */
   {n:"moss",  h:[1,0.10,0.34,0.06,0.18,0.04,0.10,0.03]},  /* green    — woody, hollow   */
-  {n:"tide",  h:[1,0.05,0.22,0.03,0.12,0.02,0.07,0.02]},  /* blue     — glassy, pure    */
+  {n:"tide",  h:[1,0.22,0.30,0.12,0.16,0.06,0.09,0.03]},  /* blue     — glassy, pure    */
   {n:"dusk",  h:[1,0.45,0.30,0.22,0.17,0.13,0.10,0.08]},  /* violet   — bowed strings   */
   {n:"rose",  h:[1,0.30,0.12,0.08,0.05,0.03,0.02,0.01]}   /* magenta  — soft, breathy   */
 ];
@@ -688,7 +688,7 @@ function timbreFor(hue){
    crudely by banning sawtooth. */
 var ROLE_HARM={bass:0.34, mid:0.78, top:1.0};
 function waveFor(G,idx,role,valence){
-  var damp=ROLE_HARM[role]*(1.05-valence*0.45);
+  var damp=ROLE_HARM[role]*(1.10-valence*0.30);
   var key=idx+"|"+role+"|"+Math.round(valence*10);
   if(G.waves[key]) return G.waves[key];
   var h=TIMBRES[idx].h, real=new Float32Array(h.length+1), imag=new Float32Array(h.length+1);
@@ -700,7 +700,13 @@ function waveFor(G,idx,role,valence){
 
 var BASS=[0,7];                                 /* root and fifth only, always */
 var ROLE_BASE={bass:36, mid:48, top:60};
-var ROLE_DETUNE={bass:0.30, mid:0.65, top:1.0};
+/* More drift than before in the upper voices: the "looming" that detune was
+   blamed for turned out to come from duplicate pitches and sevenths in the
+   bass, both since fixed, so the body and top can breathe again. */
+var ROLE_DETUNE={bass:0.30, mid:0.85, top:1.25};
+/* Floors keep the body and top from being filtered into a hum: the old curve
+   sank the middle layer to 400 Hz on an ordinary photo. */
+var ROLE_CUT_FLOOR={bass:240, mid:780, top:2200};
 
 /* The affect grid: warmth of feeling across, energy down. A single
    bright-to-dark ladder put the median photograph in its minor half and, with
@@ -824,13 +830,17 @@ function buildPatch(f){
       coverage:bd.coverage, role:role,
       /* detune scales with register: beating that is pleasant up top is mud
          at the bottom, so the bass barely moves */
-      detune:(1.5+c.entropy*7)*(1.3-dom*0.55)*ROLE_DETUNE[role],
-      cutoff:300*Math.pow(23,Math.pow(bc.light,1.15))*(0.72+af.arousal*0.75),
+      detune:(3+c.entropy*8)*(1.25-dom*0.45)*ROLE_DETUNE[role],
+      cutoff:Math.max(ROLE_CUT_FLOOR[role],
+                      300*Math.pow(23,Math.pow(bc.light,1.15))*(0.72+af.arousal*0.75)),
       q:0.5+bc.contrast*1.7,
       lfoRate:(0.025+c.density*0.22)*(1+i*0.22)*(0.65+af.arousal*0.9),
       lfoDepth:0.25+bc.contrast*0.65,
       pan:(nL===1?0:(i/(nL-1)*2-1)*(0.25+c.width*0.5)),
-      gain:(role==="bass"?0.95:role==="mid"?0.85:0.62)*(0.55+Math.min(0.45,bd.coverage*1.1)),
+      /* Mix balance, measured: with the bass layer loudest, 74-95% of every
+         pad's energy sat below 300 Hz and the body and top were buried. The
+         bass now supports rather than leads. */
+      gain:(role==="bass"?0.50:role==="mid"?0.95:1.05)*(0.55+Math.min(0.45,bd.coverage*1.1)),
       /* No sawtooth in the bass -- its harmonics are what make a low chord
          growl. And none in a warm picture either: a saw through a resonant
          lowpass is most of what reads as "tense" regardless of the notes. */
@@ -853,7 +863,13 @@ function buildPatch(f){
     preDelay: 0.005+c.depth*0.085,
     wet: clamp(0.18+(1-c.sharp)*0.62),
     /* the airy noise bed reads as unease, so a warm picture gets far less */
-    air: Math.pow(c.entropy,1.6)*0.9*(1.25-af.valence*0.75)
+    air: Math.pow(c.entropy,1.6)*0.9*(1.25-af.valence*0.75),
+    /* long tail: soft focus and depth make a bigger space, 4-11 s */
+    tail: 4+7*clamp(0.55*(1-c.sharp)+0.45*c.depth),
+    tailSend: 0.22+0.30*(1-c.sharp),
+    /* the halo: bright, warm pictures shimmer, dark ones barely do */
+    shimmer: clamp(0.15+0.55*af.valence+0.30*c.light),
+    sub: 0.03+0.025*(1-af.arousal)
   };
   return { rootName:PRETTY[br.pc], root:br.pc, quality:q.n, qfile:q.f, scale:q.sc,
     layers:layers, fx:fx, c:c, f:f, grey:br.grey, affect:af, mood:qq.mood,
@@ -888,11 +904,29 @@ var LOWPOWER=(function(){
     return cores<=4 || (phone && cores<=6);
   }catch(e){ return false; }
 })();
+/* Linear to 0.8, then a smooth tanh knee that can never exceed 0.98. Chrome's
+   DynamicsCompressor applies automatic makeup gain, so a compressor alone
+   cannot promise the output stays under full scale -- this can. */
+function ceilingCurve(){
+  var n=4096, c=new Float32Array(n), knee=0.8, room=0.18;
+  for(var i=0;i<n;i++){
+    /* a WaveShaper maps input -1..1 across the array; build it over that range */
+    var x=i/(n-1)*2-1, a=Math.abs(x), y=a<=knee ? a : knee+room*Math.tanh((a-knee)/room);
+    c[i]=x<0?-y:y;
+  }
+  return c;
+}
+function satCurve(k){
+  var n=1024, c=new Float32Array(n), norm=Math.tanh(k);
+  for(var i=0;i<n;i++){ var x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/norm; }
+  return c;
+}
 function graph(ctx,eco){
   var out=ctx.createGain(); out.gain.value=0;
   var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-17; comp.ratio.value=5;
   /* clears sub-bass rumble that the low layer's detuning otherwise stirs up */
-  var hp=ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=48; hp.Q.value=0.7;
+  /* 30 Hz rather than 48: the sub voice below sits at 33-62 Hz and must get through */
+  var hp=ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=30; hp.Q.value=0.7;
   /* a brick wall after it: nine detuned voices plus delay and reverb can sum
      past 1.0, and clipping at the output crackles just like an underrun */
   var lim=ctx.createDynamicsCompressor();
@@ -900,9 +934,61 @@ function graph(ctx,eco){
   lim.attack.value=0.003; lim.release.value=0.25;
   var trim=ctx.createGain(); trim.gain.value=0.72;
   out.connect(hp); hp.connect(comp); comp.connect(trim); trim.connect(lim);
-  lim.connect(ctx.destination);
+  var ceil=ctx.createWaveShaper(); ceil.curve=ceilingCurve(); ceil.oversample="2x";
+  lim.connect(ceil); ceil.connect(ctx.destination);
 
+  /* Voices sum into busIn, pass through a gentle tanh saturator, then feed the
+     effects. Mild saturation adds low-order harmonics and glues the layers --
+     the difference between nine separate sine-ish tones and one instrument. */
+  var busIn=ctx.createGain(); busIn.gain.value=1;
+  var shaper=ctx.createWaveShaper(); shaper.curve=satCurve(1.6); shaper.oversample="none";
+  var satTrim=ctx.createGain(); satTrim.gain.value=0.75;
   var bus=ctx.createGain(); bus.gain.value=1;
+  busIn.connect(shaper); shaper.connect(satTrim); satTrim.connect(bus);
+
+  /* ---- long tail: a small feedback-delay network ------------------------
+     Four damped feedback delays behind two allpass diffusers. It gives the
+     6-11 s tail a drone needs for a fraction of what the same length of
+     convolution would cost on a phone. Bass is kept out of it -- a long low
+     tail is mud, not atmosphere. */
+  var fdnIn=ctx.createGain(); fdnIn.gain.value=1;
+  var fdnSend=ctx.createGain(); fdnSend.gain.value=0.3;
+  var fdnHp=ctx.createBiquadFilter(); fdnHp.type="highpass"; fdnHp.frequency.value=180; fdnHp.Q.value=-3;
+  var ap1=ctx.createBiquadFilter(); ap1.type="allpass"; ap1.frequency.value=900;  ap1.Q.value=0.6;
+  var ap2=ctx.createBiquadFilter(); ap2.type="allpass"; ap2.frequency.value=2700; ap2.Q.value=0.6;
+  var fdnOut=ctx.createGain(); fdnOut.gain.value=0.38;
+  bus.connect(fdnSend); fdnSend.connect(fdnIn);
+  fdnIn.connect(fdnHp); fdnHp.connect(ap1); ap1.connect(ap2);
+  var combs=[];
+  [0.0797,0.0937,0.1103,0.1291].forEach(function(dt,ix){
+    var cd=ctx.createDelay(0.2); cd.delayTime.value=dt;
+    /* NB: Web Audio reads Q on lowpass/highpass in DECIBELS. 0.5 here would be
+       a +0.5 dB resonant bump, which inside a feedback loop lifts the loop gain
+       towards 1 at the cutoff and makes 2-8 kHz ring on indefinitely. -3 dB is
+       Butterworth: flat, no peak, highs simply decay faster than lows. */
+    var cl=ctx.createBiquadFilter(); cl.type="lowpass"; cl.frequency.value=3200; cl.Q.value=-3;
+    var cg=ctx.createGain(); cg.gain.value=0.8;
+    var cp=ctx.createStereoPanner(); cp.pan.value=(ix%2?0.7:-0.7);
+    ap2.connect(cd); cd.connect(cl); cl.connect(cg); cg.connect(cd);
+    cl.connect(cp); cp.connect(fdnOut);
+    combs.push({g:cg,t:dt});
+  });
+  fdnOut.connect(out);
+
+  /* ---- sub: one pure sine an octave under the bass root, for weight ---- */
+  var sub=ctx.createOscillator(); sub.type="sine"; sub.frequency.value=41;
+  var subG=ctx.createGain(); subG.gain.value=0;
+  sub.connect(subG); subG.connect(busIn); sub.start();
+
+  /* ---- shimmer: the chord's root and fifth two octaves up, sent ONLY into
+     the long tail, so it never sounds as notes -- only as a halo above the
+     pad. The classic ambient move. */
+  var shimG=ctx.createGain(); shimG.gain.value=0;
+  shimG.connect(fdnIn);
+  var shim=[0,1].map(function(){
+    var so=ctx.createOscillator(); so.type="sine"; so.frequency.value=880;
+    so.connect(shimG); so.start(); return so;
+  });
 
   /* chorus: two short modulated delays, opposed, for ensemble width */
   var chA=ctx.createDelay(0.05), chB=ctx.createDelay(0.05);
@@ -931,12 +1017,17 @@ function graph(ctx,eco){
   dly.connect(dlyMix);
 
   var pre=ctx.createDelay(0.25); pre.delayTime.value=0.02;
-  var rev=ctx.createConvolver();
-  rev.buffer=eco ? impulse(ctx,1.9,2.5,1) : impulse(ctx,IR_SECONDS,2.7,2);
   var wet=ctx.createGain(), dry=ctx.createGain();
   bus.connect(dry); chMix.connect(dry); dlyMix.connect(dry);
   bus.connect(pre); chMix.connect(pre); dlyMix.connect(pre);
-  pre.connect(rev); rev.connect(wet);
+  if(eco){
+    /* on a weak phone the feedback network does all the reverb work: it is
+       both cheaper and longer than the convolver it replaces */
+    pre.connect(fdnIn);
+  } else {
+    var rev=ctx.createConvolver(); rev.buffer=impulse(ctx,IR_SECONDS,2.7,2);
+    pre.connect(rev); rev.connect(wet);
+  }
   dry.connect(out); wet.connect(out);
 
   var nb=ctx.createBuffer(1,Math.floor(ctx.sampleRate*3),ctx.sampleRate), nd=nb.getChannelData(0);
@@ -951,10 +1042,16 @@ function graph(ctx,eco){
     var lg=ctx.createGain(); lg.gain.value=0;
     var lf=ctx.createBiquadFilter(); lf.type="lowpass"; lf.frequency.value=1200; lf.Q.value=1;
     var lp=ctx.createStereoPanner(); lp.pan.value=0;
-    lg.connect(lf); lf.connect(lp); lp.connect(bus);
+    lg.connect(lf); lf.connect(lp); lp.connect(busIn);
     var lfo=ctx.createOscillator(); lfo.type="sine"; lfo.frequency.value=0.06;
     var lfoAmt=ctx.createGain(); lfoAmt.gain.value=300;
     lfo.connect(lfoAmt); lfoAmt.connect(lf.frequency); lfo.start();
+    /* independent slow swells per layer, at rates that never line up, so the
+       balance between bass, body and top keeps drifting -- a drone that
+       evolves instead of sitting still */
+    var evo=ctx.createOscillator(); evo.type="sine"; evo.frequency.value=[0.031,0.047,0.067][L];
+    var evoAmt=ctx.createGain(); evoAmt.gain.value=0;
+    evo.connect(evoAmt); evoAmt.connect(lg.gain); evo.start();
     var slots=[];
     for(var s=0;s<SLOTS;s++){
       var g=ctx.createGain(); g.gain.value=0;
@@ -969,9 +1066,10 @@ function graph(ctx,eco){
       }
       slots.push({g:g,oscs:oscs});
     }
-    layers.push({g:lg,filt:lf,pan:lp,lfo:lfo,lfoAmt:lfoAmt,slots:slots});
+    layers.push({g:lg,filt:lf,pan:lp,lfo:lfo,lfoAmt:lfoAmt,evo:evo,evoAmt:evoAmt,slots:slots});
   }
   return {ctx:ctx,waves:{},out:out,bus:bus,dry:dry,wet:wet,pre:pre,dly:dly,fb:fb,dlyMix:dlyMix,
+    fdnSend:fdnSend,combs:combs,sub:sub,subG:subG,shim:shim,shimG:shimG,
     chMix:chMix,chAmtA:chAmtA,chAmtB:chAmtB,chLfo:chLfo,ngain:ngain,layers:layers};
 }
 
@@ -995,6 +1093,7 @@ function applyTo(G,p,glide){
         set(slot.g.gain, has ? (0.17/Math.max(1,src.notes.length*0.5))*(1-s*0.10) : 0);
       }
       set(lay.g.gain,src.gain);
+      set(lay.evoAmt.gain,src.gain*0.18);
       set(lay.filt.frequency,src.cutoff);
       set(lay.filt.Q,src.q);
       set(lay.pan.pan,src.pan);
@@ -1002,9 +1101,18 @@ function applyTo(G,p,glide){
       set(lay.lfoAmt.gain,src.cutoff*0.5*src.lfoDepth);
     } else {
       set(lay.g.gain,0);
+      set(lay.evoAmt.gain,0);     /* or the swell would drive a silent layer negative */
     }
   }
   var fx=p.fx;
+  /* atmosphere */
+  set(G.fdnSend.gain,fx.tailSend);
+  G.combs.forEach(function(cb){ set(cb.g.gain, Math.pow(10,-3*cb.t/fx.tail)); });
+  set(G.sub.frequency, hz(24+((p.root+tr)%12+12)%12));
+  set(G.subG.gain, fx.sub);
+  set(G.shim[0].frequency, hz(84+((p.root+tr)%12+12)%12));
+  set(G.shim[1].frequency, hz(91+((p.root+tr)%12+12)%12));
+  set(G.shimG.gain, fx.shimmer*0.08);
   set(G.dly.delayTime,fx.delayTime);
   set(G.fb.gain,fx.delayFeedback);
   set(G.dlyMix.gain,fx.delayMix);
@@ -1040,11 +1148,28 @@ function loopSeconds(p){
   while(dur<8){ cycles++; dur=cycles*cycle; }
   return Math.min(dur,36);
 }
+/* The loop is rendered after a pre-roll, so it starts with the long tail
+   already at full density. Without it the first seconds of every loop would be
+   drier than the rest, and a 10 s tail would swell audibly at each repeat. */
+var PREROLL=6;
 function render(p,dur,tail,shape){
-  var sr=44100, total=Math.ceil((dur+tail)*sr);
+  var pr = shape==="oneshot" ? 0 : PREROLL;
+  var sr=44100, total=Math.ceil((pr+dur+tail)*sr);
   var ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2,total,sr);
   var G=graph(ctx);
   applyTo(G,p,0);
+  if(shape!=="oneshot"){
+    /* Every slow modulator is snapped to a whole number of cycles per loop, or
+       the loop ends at a different point in each swell than it began and the
+       level steps at every repeat (measured: +1.9 dB before this). Live
+       playback never loops, so it keeps the free, never-aligning rates. */
+    var al=function(r){ return Math.max(1,Math.round(r*dur))/dur; };
+    G.layers.forEach(function(l,i){
+      l.lfo.frequency.value=al(l.lfo.frequency.value);
+      l.evo.frequency.value=(i+1)/dur;
+    });
+    G.chLfo.frequency.value=al(G.chLfo.frequency.value);
+  }
   if(shape==="oneshot"){
     G.out.gain.setValueAtTime(0,0);
     G.out.gain.linearRampToValueAtTime(0.85,2.4);
@@ -1058,10 +1183,11 @@ function render(p,dur,tail,shape){
 /* equal-power crossfade of the tail back over the head -> a loop with no click */
 function seamless(buf,dur,tail){
   var sr=buf.sampleRate, n=Math.floor(dur*sr), x=Math.floor(tail*sr), out=[];
+  var P=Math.floor(PREROLL*sr);
   for(var ch=0;ch<2;ch++){
     var src=buf.getChannelData(Math.min(ch,buf.numberOfChannels-1)), a=new Float32Array(n);
-    a.set(src.subarray(0,n));
-    for(var i=0;i<x;i++){ var w=Math.sqrt(i/x); a[i]=a[i]*w+src[n+i]*Math.sqrt(1-i/x); }
+    a.set(src.subarray(P,P+n));
+    for(var i=0;i<x;i++){ var w=Math.sqrt(i/x); a[i]=a[i]*w+src[P+n+i]*Math.sqrt(1-i/x); }
     out.push(a);
   }
   return out;
@@ -1296,6 +1422,8 @@ var ROWS=[
     function(p){return Math.round(p.fx.delayTime*1000)+"ms";}],
   ["grain","Chorus","fine colour noise",function(p){return p.c.grain;},function(p){return Math.round(p.fx.chorusDepth*8000)+"%";}],
   ["depth","Pre-delay","how big the room",function(p){return p.c.depth;},function(p){return Math.round(p.fx.preDelay*1000)+"ms";}],
+  ["brightness","Shimmer","octave halo",function(p){return p.fx.shimmer;},function(p){return Math.round(p.fx.shimmer*100)+"%";}],
+  ["blur + depth","Tail","long room",function(p){return (p.fx.tail-4)/7;},function(p){return p.fx.tail.toFixed(1)+"s";}],
   ["blur","Reverb","dry ↔ distant",function(p){return 1-p.c.sharp;},function(p){return Math.round(p.fx.wet*100)+"%";}]
 ];
 var DIMS=["light","sat","contrast","density","entropy","sharp","vspread","width","warmth","dominance","grain","depth"];
