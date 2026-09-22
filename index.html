@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1012">
+<title>image-music</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Martian+Mono:wght@300;400&display=swap">
+<style>
+  :root{
+    --bg:#f2f3f1; --panel:#fbfcfb; --ink:#12161a; --ink-2:#4e5860; --ink-3:#848e95;
+    --line:#d5dad7; --jade:#0e7c6b; --jade-soft:#d3e8e2;
+    --disp:"Archivo",system-ui,-apple-system,sans-serif; --mono:"Martian Mono",ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0d1012; --panel:#161a1d; --ink:#e8edea; --ink-2:#9aa5a8; --ink-3:#646e72;
+    --line:#252b2e; --jade:#5fd3b8; --jade-soft:#123029;
+  }}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--disp);line-height:1.5;
+    padding:calc(34px + env(safe-area-inset-top,0px)) 18px calc(40px + env(safe-area-inset-bottom,0px));}
+  main{max-width:640px;margin:0 auto;}
+  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:0 0 12px;}
+  h1{font-size:clamp(27px,7vw,38px);font-weight:700;letter-spacing:-.03em;line-height:1.06;margin:0 0 10px;}
+  h1 em{font-style:normal;color:var(--jade);}
+  .lede{color:var(--ink-2);font-size:15.5px;margin:0 0 28px;}
+  a.tile{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);
+    border-radius:6px;padding:16px 17px;margin-bottom:11px;}
+  a.tile:hover,a.tile:focus-visible{border-color:var(--jade);outline:none;}
+  a.tile.lead{border-color:var(--jade);box-shadow:0 0 0 2px var(--jade-soft);}
+  .tag{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--jade);
+    display:block;margin-bottom:5px;}
+  .tile h2{font-size:18px;font-weight:600;letter-spacing:-.015em;margin:0 0 4px;}
+  .tile p{font-size:13.5px;color:var(--ink-2);margin:0;}
+  .docs{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);}
+  .docs h3{font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-3);margin:0 0 10px;}
+  .docs a{display:block;color:var(--ink-2);text-decoration:none;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .docs a:hover{color:var(--jade);}
+  .docs a b{color:var(--ink);font-weight:500;font-family:var(--mono);font-size:11px;margin-right:8px;}
+  footer{margin-top:28px;font-family:var(--mono);font-size:10px;color:var(--ink-3);line-height:1.8;}
+  footer a{color:var(--ink-3);}
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">image-music</p>
+  <h1>Pictures, played as <em>sound</em>.</h1>
+  <p class="lede">Everything here runs entirely in the browser — no build step, no server, nothing uploaded. On a phone, start with pad mode.</p>
+
+  <a class="tile lead" href="web/pad.html">
+    <span class="tag">start here · works on phones</span>
+    <h2>Pad mode</h2>
+    <p>Take a photo and it becomes one sustained chord — colour picks the harmony, texture picks the detune, brightness picks the filter. Export it as a seamless loop, a one-shot and a MIDI chord.</p>
+  </a>
+
+  <a class="tile" href="web/demo-standalone.html">
+    <span class="tag">bench</span>
+    <h2>The sequencer bench</h2>
+    <p>The original mapping, where the image is read as a score: left→right is time, bottom→top is pitch. Includes the angle lab that measures how much a tilted camera moves the derived key.</p>
+  </a>
+
+  <a class="tile" href="web/index.html">
+    <span class="tag">prototype</span>
+    <h2>Sequencer prototype</h2>
+    <p>The modular version of the same engine — separate analysis, mapping, synthesis and scheduling files, meant to be read rather than demoed.</p>
+  </a>
+
+  <a class="tile" href="experiments/catdex.html">
+    <span class="tag">experiment</span>
+    <h2>Pocket Cat Dex</h2>
+    <p>A sibling idea: photograph a cat, get a 32×32 pixel card whose stats are read off the actual pixels, and collect them.</p>
+  </a>
+
+  <div class="docs">
+    <h3>Documentation</h3>
+    <a href="docs/PAD.md"><b>PAD</b>One image, one sustained chord — the recommended mapping</a>
+    <a href="docs/CONCEPT.md"><b>CONCEPT</b>The idea, and the reasoning behind every sound choice</a>
+    <a href="docs/MAPPING.md"><b>MAPPING</b>The full sequencer mapping, precisely specified</a>
+    <a href="docs/ROADMAP.md"><b>ROADMAP</b>Staged build plan and tech trade-offs</a>
+  </div>
+
+  <footer>
+    Audio needs a tap to start, and on iPhone the silent switch mutes Web Audio.<br>
+    <a href="https://github.com/housedodo/image-music">github.com/housedodo/image-music</a>
+  </footer>
+</main>
+</body>
+</html>
