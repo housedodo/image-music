@@ -606,3 +606,24 @@ white cliff under a pale sky is light, but it is also low in saturation, cool (s
 blue outweigh the stone), and busy (rock texture). Three of the four push toward minor, and
 the result is C♯ min7, *moody*. That is correct for the rule. Whether the rule is right is
 exactly what the lab's *Pure / Warm / Airy* ratings will show.
+
+## Training set 8: what the first ratings changed
+
+Eight photos were rated in the lab. The findings, and what changed in the engine:
+
+- **The top was too loud on 5 of 8** ("too strong high note"), even where the sound was
+  otherwise "perfect". "As mapped" also won on fullness, so the body stays as it was and
+  only the top moves. Top layer gain drops from 1.05 to 0.62, its filter sits 25 % lower,
+  and shimmer drops to 65 %. On the Malta cliff the perceived (A-weighted) centroid falls
+  from 1008 to 877 Hz and the heard low end rises from 13 % to 26 %.
+- **6/9 lost both times it played** (two *joyful* photos: As mapped 👎, Airy 👎/😐,
+  Warm 👍 both times). The one *suspended* photo also preferred Warm over quartal. Both
+  cells now play **add9 open**: root, fifth and a major tenth in the body, with 9th, 5th and
+  octave on top. It is still major, but more open than *warm*'s close add9.
+- **Dark blue and violet should sound submerged** (user note). A `submerged` factor
+  (0 to 1, from darkness × a blue–violet dominant hue) drops the top an octave above 0.5,
+  lowers the body and top filters by up to 45 %, and takes up to 40 % off the top and
+  70 % off the shimmer.
+- **Kept:** moody min7 (rated best on a warm-orange photo), serene maj9, wistful min9.
+  *Deep* (minor) was rated 👎 on every warm photo, which confirms minor is right only for
+  cool pictures.

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 19:53 UTC">
+<html lang="en" data-build="2026-09-22 20:06 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -448,6 +448,9 @@ var Q={
   maj69:   {n:"6/9",     f:"maj69",   mid:[0,4,9], top:[2,4,9],    sc:[0,2,4,5,7,9,11]},
   sus2:    {n:"sus2",    f:"sus2",    mid:[0,7,14],top:[2,7,9],    sc:[0,2,5,7,9,10]},
   quartal: {n:"quartal", f:"quartal", mid:[0,5,10],top:[0,5,10],   sc:[0,2,5,7,10]},
+  /* open major: root, fifth and a tenth in the body, the 9th on top. Chosen by
+     ear in the tuning lab over quartal and 6/9 on neutral and joyful pictures */
+  open9:   {n:"add9 open", f:"add9open", mid:[0,7,16], top:[2,7,12], sc:[0,2,4,5,7,9,11]},
   lydian:  {n:"maj7\u266F11", f:"maj7s11", mid:[0,4,7], top:[2,6,11], sc:[0,2,4,6,7,9,11]},
   min9:    {n:"min9",    f:"min9",    mid:[0,3,7], top:[2,3,7],    sc:[0,2,3,5,7,9,10]},
   min7:    {n:"min7",    f:"min7",    mid:[0,3,7], top:[3,7,10],   sc:[0,2,3,5,7,8,10]},
@@ -516,8 +519,8 @@ var MOODS=[
 ];
 var GRID=[
   /*            calm        mid          energetic   */
-  /* warm   */ [Q.maj9,    Q.add9,      Q.maj69 ],
-  /* neutral*/ [Q.sus2,    Q.quartal,   Q.lydian],
+  /* warm   */ [Q.maj9,    Q.add9,      Q.open9 ],
+  /* neutral*/ [Q.sus2,    Q.open9,     Q.lydian],
   /* cool   */ [Q.min9,    Q.min7,      Q.minb9 ]
 ];
 function rootOf(f){
@@ -581,6 +584,11 @@ function buildPatch(f){
      and is most of why it sounded tense. */
   var ROLES = nL===1 ? ["mid"] : nL===2 ? ["bass","top"] : ["bass","mid","top"];
   var layers=[], used={}, i;
+  /* SUBMERGED: dark blue and violet pictures read as underwater, so the top
+     sinks, darkens and quietens with them (tuning-lab set 8: both dark cool
+     photos were rated "too much high end"). 0 on anything light or warm. */
+  var hh=((f.hueDom%1)+1)%1, coolHue=(f.dominance>=0.22 && hh>=0.5 && hh<0.86)?1:0.35;
+  var sub=clamp((0.42-f.light)/0.25)*coolHue;
 
   for(i=0;i<nL;i++){
     var bd=bs[i], bc=calib(bd), role=ROLES[i];
@@ -590,7 +598,7 @@ function buildPatch(f){
     var want = role==="bass" ? 2 : (bc.sat<.30?2 : bc.sat<.62?3 : 4);
     want = Math.max(2, Math.min(Math.min(set.length,SLOTS), want + (dom>0.62?-1:dom<0.34?1:0)));
 
-    var base=ROLE_BASE[role];
+    var base=ROLE_BASE[role] - (role==="top" && sub>0.5 ? 12 : 0);
     /* lift the top voice clear of whatever the middle one ended on: a whole
        tone straddling two layers beats as badly as one inside a chord */
     if(role==="top"){
@@ -634,8 +642,9 @@ function buildPatch(f){
       /* detune scales with register: beating that is pleasant up top is mud
          at the bottom, so the bass barely moves */
       detune:(3+c.entropy*8)*(1.25-dom*0.45)*ROLE_DETUNE[role],
-      cutoff:Math.max(ROLE_CUT_FLOOR[role],
-                      300*Math.pow(23,Math.pow(bc.light,1.15))*(0.72+af.arousal*0.75)),
+      cutoff:Math.max(ROLE_CUT_FLOOR[role]*(1-0.45*sub),
+                      300*Math.pow(23,Math.pow(bc.light,1.15))*(0.72+af.arousal*0.75)*
+                      (role==="top"?0.75:1))*(role==="bass"?1:1-0.45*sub),
       q:0.5+bc.contrast*1.7,
       lfoRate:(0.025+c.density*0.22)*(1+i*0.22)*(0.65+af.arousal*0.9),
       lfoDepth:0.25+bc.contrast*0.65,
@@ -643,7 +652,9 @@ function buildPatch(f){
       /* Mix balance, measured: with the bass layer loudest, 74-95% of every
          pad's energy sat below 300 Hz and the body and top were buried. The
          bass now supports rather than leads. */
-      gain:(role==="bass"?0.50:role==="mid"?0.95:1.05)*(0.55+Math.min(0.45,bd.coverage*1.1)),
+      /* the top used to be the loudest layer (1.05); rated "too strong" on 5 of
+         the first 8 lab photos, so it now sits under the body */
+      gain:(role==="bass"?0.50:role==="mid"?0.95:0.62*(1-0.4*sub))*(0.55+Math.min(0.45,bd.coverage*1.1)),
       /* No sawtooth in the bass -- its harmonics are what make a low chord
          growl. And none in a warm picture either: a saw through a resonant
          lowpass is most of what reads as "tense" regardless of the notes. */
@@ -671,11 +682,11 @@ function buildPatch(f){
     tail: 4+7*clamp(0.55*(1-c.sharp)+0.45*c.depth),
     tailSend: 0.22+0.30*(1-c.sharp),
     /* the halo: bright, warm pictures shimmer, dark ones barely do */
-    shimmer: clamp(0.15+0.55*af.valence+0.30*c.light),
+    shimmer: clamp(0.15+0.55*af.valence+0.30*c.light)*0.65*(1-0.7*sub),
     sub: 0.03+0.025*(1-af.arousal)
   };
   return { rootName:PRETTY[br.pc], root:br.pc, quality:q.n, qfile:q.f, scale:q.sc,
-    layers:layers, fx:fx, c:c, f:f, grey:br.grey, affect:af, mood:qq.mood,
+    layers:layers, fx:fx, c:c, f:f, submerged:sub, grey:br.grey, affect:af, mood:qq.mood,
     timbre:TIMBRES[timbreFor(br.grey?f.hue:f.hueDom)].n };
 }
 function allNotes(p){
