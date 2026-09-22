@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 11:09 UTC">
+<html lang="en" data-build="2026-09-22 11:12 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -130,6 +130,43 @@
     padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);z-index:5;}
   .dock button{flex:1;min-height:46px;}
   @media(max-width:780px){ .dock{display:flex;} body{padding-bottom:var(--bar);} .wrap{padding-bottom:var(--bar);} }
+  .mini{display:none;}
+
+  /* PHONE, SIMPLE MODE.
+     One screen: the picture, take a photo, hold the pad, export. Everything
+     else is one tap away behind "More" rather than scrolled past. */
+  @media(max-width:780px){
+    .mini{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+    .mini span{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-3);}
+    .mini button{padding:7px 14px;font-size:12px;min-height:0;border-radius:20px;}
+    .eyebrow,h1,.lede{display:none;}
+    .dock{display:none;}
+    body{padding-bottom:0;}
+    .wrap{padding-block:14px 26px;}
+    .rig{margin-top:0;gap:10px;}
+    .screen canvas{max-height:46vh;}
+
+    body:not(.expanded) .expert,
+    body:not(.expanded) #learn,
+    body:not(.expanded) #rowsWrap,
+    body:not(.expanded) .fp,
+    body:not(.expanded) .near,
+    body:not(.expanded) .patch>h2,
+    body:not(.expanded) .export>h2,
+    body:not(.expanded) .export>p:not(.status),
+    body:not(.expanded) .export .manifest{display:none;}
+
+    /* with the panels stripped, the chord and the export button are just
+       two more rows under the transport, so no reordering is needed */
+    body:not(.expanded) .acts{grid-template-columns:1fr;}
+    body:not(.expanded) .patch{background:none;border:0;padding:10px 2px 0;}
+    body:not(.expanded) .chordline{font-size:20px;margin:0;}
+    body:not(.expanded) .voicing{margin:0 0 2px;}
+    body:not(.expanded) .export{background:none;border:0;padding:0;margin-top:10px;}
+    body:not(.expanded) #exp{min-height:48px;}
+    body:not(.expanded) .status{text-align:center;}
+  }
+
   @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
 
   /* phone overrides last, so they win on source order */
@@ -157,6 +194,10 @@
 
 
 <div class="wrap">
+  <div class="mini">
+    <span>Pad from picture</span>
+    <button id="more" aria-expanded="false">More</button>
+  </div>
   <p class="eyebrow">image-music · pad mode</p>
   <h1>Take a picture.<br>Keep the <em>pad</em>.</h1>
   <p class="lede">One photo becomes one sustained chord — its colour, texture and contrast become the harmony, the detune and the filter. Switch pictures and the pad glides across. When you find one you like, export it as a seamless loop, a one-shot and a MIDI chord you can drop into a project.</p>
@@ -171,9 +212,9 @@
 
       <div class="acts">
         <label class="fake" id="shootLbl">📷 Take photo<input type="file" id="shoot" accept="image/*" capture="environment"></label>
-        <label class="fake">Upload<input type="file" id="pick" accept="image/*"></label>
-        <button id="live">Live camera</button>
-        <button id="save">Save pad</button>
+        <label class="fake expert">Upload<input type="file" id="pick" accept="image/*"></label>
+        <button id="live" class="expert">Live camera</button>
+        <button id="save" class="expert">Save pad</button>
       </div>
 
       <div class="transport">
@@ -183,15 +224,15 @@
           <span id="tr">±0 st</span>
           <button id="up" aria-label="Transpose up">+</button>
         </div>
-        <span class="vol">vol<input type="range" id="vol" min="0" max="1" step="0.01" value="0.75"></span>
+        <span class="vol expert">vol<input type="range" id="vol" min="0" max="1" step="0.01" value="0.75"></span>
       </div>
 
-      <div class="striphead"><h2>Saved pads</h2><button id="clear" hidden>clear all</button></div>
-      <div class="strip" id="saved"></div>
-      <p class="status" id="savedmsg" style="color:var(--ink-3)">Nothing saved yet — tap “Save pad” to keep one.</p>
+      <div class="striphead expert" id="savedHead"><h2>Saved pads</h2><button id="clear" hidden>clear all</button></div>
+      <div class="strip expert" id="saved"></div>
+      <p class="status expert" id="savedmsg" style="color:var(--ink-3)">Nothing saved yet — tap “Save pad” to keep one.</p>
 
-      <div class="striphead"><h2>Starters</h2></div>
-      <div class="strip" id="strip"></div>
+      <div class="striphead expert" id="stripHead"><h2>Starters</h2></div>
+      <div class="strip expert" id="strip"></div>
     </div>
 
     <div>
@@ -220,6 +261,7 @@
     </div>
   </div>
 
+  <div id="learn">
   <section>
     <h3>What the picture controls</h3>
     <p class="note">Ten measurements, ten synth parameters, no sequencer. Only two of them quantise — the root and the chord quality — so the odds of two unrelated photos giving the same patch are vanishingly small.</p>
@@ -261,6 +303,8 @@
     <h3>Using it in a track</h3>
     <p class="note">Transpose before exporting — the stepper moves the root and the render follows, so you can match a pad to a song's key without re-shooting anything. The MIDI file holds the same chord as held notes, so you can re-voice it with your own instrument and keep the picture's harmony while dropping its texture. The loop is the opposite trade: it keeps the texture exactly, including the detune and the filter breath, which no MIDI file can carry. Most of the time you want both — the loop as a bed, the MIDI doubling it an octave down.</p>
   </section>
+
+  </div>
 
   <footer>6 voice slots · 3 oscillators each · offline render at 44.1 kHz · nothing leaves your device<br>
   <span id="build">build —</span></footer>
@@ -908,6 +952,12 @@ function transpose(d){
   $("tr").textContent=(state.transpose>0?"+":state.transpose<0?"":"±")+state.transpose+" st";
   if(state.patch){ paintPatch(state.patch); if(state.playing) applyTo(A,state.patch,notesOf(state.patch),0.8); }
 }
+$("more").addEventListener("click",function(){
+  var on=document.body.classList.toggle("expanded");
+  this.textContent=on?"Less":"More";
+  this.setAttribute("aria-expanded",String(on));
+  if(!on) window.scrollTo({top:0,behavior:"smooth"});
+});
 $("up").addEventListener("click",function(){ transpose(1); });
 $("down").addEventListener("click",function(){ transpose(-1); });
 
