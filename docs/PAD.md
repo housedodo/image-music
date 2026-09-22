@@ -440,3 +440,39 @@ Drawn in `tools/icons.py` with Pillow: a picture frame whose landscape is a soun
 Strokes are stamped as overlapping circles rather than drawn with `ImageDraw.line`, whose
 mitred joins were visibly jagged at icon sizes. The maskable variant keeps all content
 inside the centre 80% safe zone with the background filling the full tile.
+
+
+---
+
+# Picking a photo while it plays
+
+Choosing a photo pauses the pad; the new one starts it again. Without this the old pad
+drones on through the picker and then glides into the new one, so you never hear a clean
+entry.
+
+```
+input "click"   -> pausePick()   remember whether it was playing, fade out over 0.25 s
+input "change"  -> load, rebuild the patch, then fade back in over 0.5 s
+input "cancel"  -> resume exactly as it was
+```
+
+The fades are faster than a deliberate Play/Stop (0.25 s and 0.5 s against 0.9 s and 1.6 s),
+so it reads as a transition rather than a stop.
+
+## Not getting stuck silent
+
+The failure mode to avoid is pausing and never resuming. Three guards:
+
+- **`cancel` event** on `<input type="file">` — the clean signal, but only on Chrome 113+
+  and Safari 16.4+.
+- **Focus fallback** — when focus returns to the window and no file has arrived, resume
+  after 2 s. A phone can be slow to hand the file back after the camera closes, and
+  `change` clears this timer as soon as it fires.
+- **Every exit path calls `endPick`** — a decode failure, an empty file list, a second
+  click while one is already open.
+
+Playback only resumes if it was playing *before* the pick, so tapping Take photo on a
+silent app leaves it silent, and no AudioContext is created.
+
+Starters and saved pads are unaffected — those load instantly, so they keep the 2.8 s glide,
+which is the nicer behaviour when there is no picker to wait for.

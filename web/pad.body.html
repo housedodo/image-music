@@ -1270,15 +1270,54 @@ function addImage(img,label){
   var iw=img.naturalWidth||img.videoWidth||img.width, ih=img.naturalHeight||img.videoHeight||img.height;
   addFrame(makeFrame(function(c,w,h){ c.drawImage(img,0,0,w,h); },label,iw,ih));
 }
+/* Choosing a photo pauses the pad and the new one starts it again, so you hear
+   a clean entry rather than the old pad droning through the picker and then
+   gliding. If the picker is dismissed without choosing anything, playback
+   resumes as it was. */
+var wasPlaying=false, picking=false, pickTimer=null;
+function pausePick(){
+  if(picking) return;
+  picking=true;
+  wasPlaying=state.playing;
+  if(wasPlaying) setPlaying(false,true);
+}
+function endPick(resume){
+  if(!picking) return;
+  picking=false;
+  if(pickTimer){ clearTimeout(pickTimer); pickTimer=null; }
+  if(resume && wasPlaying && state.patch) setPlaying(true,true);
+  wasPlaying=false;
+}
+/* No "cancel" event on older browsers, so fall back to: focus came back and no
+   file arrived shortly after. */
+window.addEventListener("focus",function(){
+  if(!picking) return;
+  if(pickTimer) clearTimeout(pickTimer);
+  pickTimer=setTimeout(function(){ endPick(true); },2000);   /* phones can be slow to hand the file back */
+});
+
 function fromFile(f){
-  if(!f) return;
+  if(!f){ endPick(true); return; }
+  if(pickTimer){ clearTimeout(pickTimer); pickTimer=null; }
   var img=new Image(), u=URL.createObjectURL(f);
-  img.onload=function(){ stopLive(); addImage(img,(f.name||"photo").replace(/\.[^.]+$/,"").slice(0,22)); URL.revokeObjectURL(u); };
-  img.onerror=function(){ $("nametag").textContent="couldn't read that image"; URL.revokeObjectURL(u); };
+  img.onload=function(){
+    stopLive();
+    addImage(img,(f.name||"photo").replace(/\.[^.]+$/,"").slice(0,22));
+    URL.revokeObjectURL(u);
+    endPick(true);                 /* the new pad starts where the old one left off */
+  };
+  img.onerror=function(){
+    $("nametag").textContent="couldn't read that image";
+    URL.revokeObjectURL(u); endPick(true);
+  };
   img.src=u;
 }
-$("shoot").addEventListener("change",function(e){ fromFile(e.target.files[0]); e.target.value=""; });
-$("pick").addEventListener("change",function(e){ fromFile(e.target.files[0]); e.target.value=""; });
+["shoot","pick"].forEach(function(id){
+  var el=$(id);
+  el.addEventListener("click",pausePick);          /* fires as the picker opens */
+  el.addEventListener("cancel",function(){ endPick(true); });
+  el.addEventListener("change",function(e){ fromFile(e.target.files[0]); e.target.value=""; });
+});
 
 var strip=$("strip");
 SCENES.forEach(function(s,i){
@@ -1314,13 +1353,13 @@ $("live").addEventListener("click",function(){
   }).catch(function(err){ $("nametag").textContent="camera unavailable: "+err.name; });
 });
 
-function setPlaying(on){
+function setPlaying(on,fast){
   var G=live(); G.ctx.resume();
   state.playing=on;
   $("play").textContent=on?"■ Stop":"▶ Play";
   $("dockPlay").textContent=on?"Stop":"Play";
-  if(on){ applyTo(G,state.patch,0.1); G.out.gain.setTargetAtTime(master,G.ctx.currentTime,1.6); }
-  else { G.out.gain.setTargetAtTime(0,G.ctx.currentTime,0.9); $("breath").style.transform="scaleX(0)"; }
+  if(on){ applyTo(G,state.patch,0.1); G.out.gain.setTargetAtTime(master,G.ctx.currentTime,fast?0.5:1.6); }
+  else { G.out.gain.setTargetAtTime(0,G.ctx.currentTime,fast?0.25:0.9); $("breath").style.transform="scaleX(0)"; }
 }
 function toggle(){ setPlaying(!state.playing); }
 $("play").addEventListener("click",toggle);
