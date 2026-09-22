@@ -60,3 +60,62 @@ Determinism is unchanged from `MAPPING.md`: the same photo always yields the sam
 small change in angle moves the continuous parameters slightly and the quantised ones not
 at all — and a pad that drifts a little is still the same pad, which is a tolerance a drone
 has and a sequence does not.
+
+## Capture on a phone
+
+Two separate file inputs, because they mean different things on mobile and the same thing
+on desktop:
+
+- `<input type="file" accept="image/*" capture="environment">` — **Take photo**. On a phone
+  this opens the rear camera directly; the shot comes back as a file. No `getUserMedia`
+  permission prompt, no live preview to keep alive, and it works in every mobile browser.
+- `<input type="file" accept="image/*">` — **Upload**. Opens the photo library.
+
+`getUserMedia` is kept as a third option (**Live camera**) for the continuous case, where
+the analysis re-reads at ~1.6 Hz and the pad glides between readings. It is the worst of
+the three on a phone — it holds the camera open, drains battery, and needs a permission
+grant — so it is not the default.
+
+Layout below 780px collapses to one column and a fixed dock at the bottom holds Hold and
+Export, padded with `env(safe-area-inset-bottom)`. Every control is at least 46px tall.
+
+## Export
+
+All rendering is offline via `OfflineAudioContext` at 44.1 kHz using the **same graph
+builder** as live playback, so the export is exact rather than a recording of playback.
+
+| File | What it is |
+|---|---|
+| `pad-loop.wav` | Seamless loop, 16-bit stereo |
+| `pad-oneshot.wav` | 12 s, swells in and out |
+| `pad.mid` | The chord as held notes, type-0, 120 bpm |
+| `patch.json` | Every measurement and every derived synth parameter |
+| `source.png` | The analysed frame |
+| `README.txt` | What's in the kit and how to use it |
+
+Packed as a store-only ZIP written by hand (~40 lines plus a CRC32 table), so there is no
+library dependency.
+
+### Seamless looping
+
+The loop length is chosen as a whole number of LFO cycles nearest 12 seconds, so the filter
+breath ends where it started. Oscillator phase still won't match at the seam, so the render
+runs `dur + 0.35 s` and the tail is equal-power cross-faded back over the head:
+
+```
+out[i] = a[i]·√(i/x) + a[i+n]·√(1−i/x)   for i < x
+```
+
+The noise bed is random and never loops on its own; the same crossfade covers it.
+
+### Transpose
+
+A semitone offset (−12…+12) applied to the MIDI note numbers, not to the measurements, so
+it moves pitch without touching timbre. Live playback and the export both read it, which
+means a pad can be matched to a track's key without re-shooting.
+
+### Delivery
+
+`claude.use("downloads")` when the page runs as an artifact (the sandbox blocks `<a download>`),
+falling back to a blob link when served normally. Note the artifact download allowlist has no
+`.wav` or `.mid` entry — packing the kit as `.zip` is what makes the audio deliverable at all.
