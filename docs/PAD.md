@@ -476,3 +476,76 @@ silent app leaves it silent, and no AudioContext is created.
 
 Starters and saved pads are unaffected — those load instantly, so they keep the 2.8 s glide,
 which is the nicer behaviour when there is no picker to wait for.
+
+
+---
+
+# Salience
+
+Every measurement was a pixel-count average, but the eye does not weight a photograph that
+way. Each pixel now carries an attention weight — **local luminance contrast** against a
+box-blurred surround (normalised against the 85th percentile, not the maximum, or one
+specular highlight collapses every other weight onto the floor) times a **mild centre
+bias** — and the mood features are re-measured through it, blended 50/50 with the plain
+average.
+
+There is deliberately **no brightness term**. Weighting bright pixels higher would push
+every dark photograph lighter, which is the opposite of what is wanted: only a dark
+*surround* should lose its vote, not a dark *subject*.
+
+Effect over the 19-photo corpus: all 9 moods still occur, no regressions, and two small
+improvements (a sunlit room moved serene → warm, an overcast field joyful → bright).
+
+## What it does not fix, and why
+
+A cave mouth framing a bright bay still comes out **tense**. Three approaches were tried
+and measured:
+
+| approach | result |
+|---|---|
+| local contrast alone | barely moves it — craggy limestone is *full* of detail, so the rock scores as "interesting" |
+| dark-region-connected-to-border detector | either fires on 17 of 19 photographs (a percentile threshold just means "the darker part of any photo") or, once tightened, on none |
+| saturation as a third cue | regressed a dark sleeping face to *open* — ochre rock is saturated, pale sky is not |
+
+The honest reason: **a cave framing a bay and a dark room with a glowing monitor are
+structurally the same image** — dark surround, bright middle. What separates them is that a
+bay is cheerful and a dark studio is not, which is semantic, not geometric. Any threshold
+that flips the first also flips the second, and *tense* is right for the second.
+
+This needs a model that knows what is in the frame. It is not a calibration problem.
+
+---
+
+# Colour as instrument
+
+Hue picked the key but said nothing about the sound. It now also picks the **harmonic
+recipe** — a `PeriodicWave` built from explicit harmonic amplitudes, so these are genuinely
+different timbres rather than three stock waveforms.
+
+| hue | family | harmonics | character |
+|---|---|---|---|
+| red | `ember` | strong 2nd and 3rd | reedy, burning |
+| yellow | `gold` | odd-weighted, strong 5th and 7th | bell, metallic |
+| green | `moss` | odd only, fast rolloff | woody, hollow |
+| blue | `tide` | sparse, near-sine | glassy, pure |
+| violet | `dusk` | full spectrum, slow rolloff | bowed strings |
+| magenta | `rose` | 2nd only, then nothing | soft, breathy |
+
+Harmonics are damped by `ROLE_HARM[role] × (1.05 − valence×0.45)`: the bass keeps only its
+lowest partials whatever the colour (or the low end growls), and a warm picture is damped
+further. That replaces the old crude rule of banning sawtooth on warm images — the stock
+`type` is gone entirely.
+
+**Each band picks its own family from its own hue**, so a photograph whose shadows and
+highlights differ in colour is scored for two instruments at once. Measured examples:
+
+```
+food face on a plate   tide / tide / ember    blue trousers under warm food
+run medal              tide / ember / ember   blue shirt under an orange medal
+highland cow           moss / gold  / gold    green shade under golden grass
+cat in a red bowl      ember / ember / dusk   warm room, violet highlight
+```
+
+Across the corpus only 4 of 6 families appear as the *overall* label — photographs cluster
+in warm hues, so `ember` takes 10 of 19 — but all 6 appear at band level, which is where
+they actually sound.
