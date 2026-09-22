@@ -1,0 +1,1189 @@
+<!doctype html>
+<html lang="en" data-build="2026-09-22 19:40 UTC">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="robots" content="noindex">
+<link rel="icon" href="icons/favicon-64.png" sizes="64x64">
+<style>*{box-sizing:border-box;} html,body{margin:0;} [hidden]{display:none!important;}</style>
+<title>Pad Tuning Lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Martian+Mono:wght@300;400;500&display=swap">
+<style>
+  :root{
+    --bg:#f2f3f1; --panel:#fbfcfb; --sunk:#e3e6e3; --ink:#12161a; --ink-2:#4e5860; --ink-3:#848e95;
+    --line:#d5dad7; --jade:#0e7c6b; --jade-soft:#d3e8e2; --warn:#a8452f; --amber:#a86a12;
+    --disp:"Archivo",system-ui,sans-serif; --mono:"Martian Mono",ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0d1012; --panel:#161a1d; --sunk:#090b0c; --ink:#e8edea; --ink-2:#9aa5a8; --ink-3:#646e72;
+    --line:#252b2e; --jade:#5fd3b8; --jade-soft:#123029; --warn:#e0806a; --amber:#e0a458;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0d1012; --panel:#161a1d; --sunk:#090b0c; --ink:#e8edea; --ink-2:#9aa5a8; --ink-3:#646e72;
+    --line:#252b2e; --jade:#5fd3b8; --jade-soft:#123029; --warn:#e0806a; --amber:#e0a458;
+  }
+  body{background:var(--bg);color:var(--ink);font-family:var(--disp);line-height:1.45;}
+  .wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:18px 48px;}
+  .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin:0;}
+  .count{font-family:var(--mono);font-size:10px;color:var(--jade);letter-spacing:.06em;}
+  h1{font-size:23px;font-weight:700;letter-spacing:-.025em;line-height:1.12;margin:10px 0 6px;text-wrap:balance;}
+  .lede{color:var(--ink-2);font-size:13.5px;margin:0 0 14px;}
+
+  .screen{position:relative;border-radius:6px;overflow:hidden;background:var(--sunk);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;min-height:150px;}
+  .screen canvas{display:block;width:auto;height:auto;max-width:100%;max-height:40vh;}
+  .screen .name{position:absolute;left:9px;bottom:8px;font-family:var(--mono);font-size:9.5px;
+    background:rgba(4,8,8,.62);color:#f2f7f5;padding:3px 7px;border-radius:2px;max-width:75%;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px;}
+  button,.fake{font-family:var(--disp);font-size:14px;font-weight:500;padding:11px 12px;border-radius:5px;cursor:pointer;
+    border:1px solid var(--line);background:var(--panel);color:var(--ink);display:flex;align-items:center;
+    justify-content:center;gap:7px;min-height:44px;}
+  button:focus-visible,.fake:focus-visible{outline:2px solid var(--jade);outline-offset:2px;}
+  button.jade{background:var(--jade);color:var(--bg);border-color:var(--jade);font-weight:600;}
+  button:disabled{opacity:.45;cursor:default;}
+  .fake input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+
+  .auto{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin:14px 0 8px;letter-spacing:.02em;}
+  .auto b{color:var(--ink-2);font-weight:500;}
+
+  .var{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch;margin-bottom:8px;}
+  .var .play{justify-content:flex-start;text-align:left;flex-direction:column;align-items:flex-start;gap:1px;
+    padding:9px 12px;min-height:58px;}
+  .var .play b{font-size:15px;font-weight:600;display:flex;gap:8px;align-items:baseline;}
+  .var .play b em{font-style:normal;font-family:var(--mono);font-size:10px;font-weight:400;color:var(--jade);}
+  .var .play span{font-size:12px;color:var(--ink-2);font-weight:400;}
+  .var.on .play{border-color:var(--jade);box-shadow:0 0 0 2px var(--jade-soft);}
+  .var.on .play b::before{content:"▶";font-size:10px;color:var(--jade);}
+  .rate{display:flex;gap:4px;}
+  .rate button{width:44px;padding:0;font-size:18px;min-height:58px;}
+  .rate button[aria-pressed=true][data-r="1"]{background:var(--jade-soft);border-color:var(--jade);}
+  .rate button[aria-pressed=true][data-r="0"]{background:var(--sunk);border-color:var(--ink-3);}
+  .rate button[aria-pressed=true][data-r="-1"]{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);}
+
+  .stop{width:100%;margin-top:4px;}
+  textarea{width:100%;box-sizing:border-box;margin-top:12px;min-height:64px;resize:vertical;font:inherit;font-size:14px;
+    padding:10px 12px;border-radius:5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);}
+  textarea:focus-visible{outline:2px solid var(--jade);outline-offset:1px;}
+  .save{width:100%;margin-top:10px;min-height:50px;font-size:15px;}
+  .status{font-family:var(--mono);font-size:10.5px;color:var(--jade);min-height:16px;margin:8px 0 0;text-align:center;}
+  .status.err{color:var(--warn);}
+
+  section{margin-top:30px;border-top:1px solid var(--line);padding-top:16px;}
+  h2{font-size:12px;font-family:var(--mono);font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0 0 10px;}
+  .rec{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);}
+  .rec:first-child{border-top:0;}
+  .rec img{width:52px;height:52px;object-fit:cover;border-radius:4px;display:block;background:var(--sunk);}
+  .rec .t{font-size:13px;font-weight:600;}
+  .rec .s{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);display:block;margin-top:2px;}
+  .rec .n{font-size:12px;color:var(--ink-2);display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rec .del{border:0;background:none;color:var(--ink-3);min-height:0;padding:6px;font-size:16px;}
+  .empty{font-size:13px;color:var(--ink-3);}
+  .export{width:100%;margin-top:12px;}
+  .how{font-size:12.5px;color:var(--ink-2);margin:14px 0 0;}
+  .how b{color:var(--ink);font-weight:600;}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <div class="top"><p class="eyebrow">image-music · tuning lab</p><span class="count" id="count"></span></div>
+  <h1>Which one sounds like the picture?</h1>
+  <p class="lede">Every photo plays in the same five settings. Tap each to hear it, mark what fits, and save. Once there's a batch, I fit the mapping to your ears.</p>
+
+  <div class="screen"><canvas id="view" width="540" height="720"></canvas><span class="name" id="nametag">—</span></div>
+  <div class="acts">
+    <label class="fake">📷 Take photo<input type="file" id="shoot" accept="image/*" capture="environment"></label>
+    <label class="fake">🖼️ Upload photo<input type="file" id="pick" accept="image/*"></label>
+  </div>
+
+  <p class="auto" id="auto">—</p>
+  <div id="variants"></div>
+  <button class="stop" id="stop" disabled>■ Stop</button>
+
+  <textarea id="note" placeholder="Anything missing? e.g. “too bright”, “wants more bass”, “should feel happier”"></textarea>
+  <button class="jade save" id="save">Save rating</button>
+  <p class="status" id="status"></p>
+
+  <section>
+    <h2>Rated so far</h2>
+    <div id="list"><p class="empty">Nothing saved yet.</p></div>
+    <button class="export" id="export">Export training set (.json)</button>
+    <p class="how"><b>👍</b> fits the picture · <b>😐</b> could work · <b>👎</b> wrong. Rate as many of the five as you like — the ones you skip just don't count. The note is where the useful surprises are.</p>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var $=function(i){return document.getElementById(i);};
+var clamp=function(v){return Math.max(0,Math.min(1,v));};
+var MAXL=3;                 /* at most three tonal bands in one picture */
+
+/* ================= scenes ================= */
+function grad(c,w,h,st){ var g=c.createLinearGradient(0,0,0,h); for(var i=0;i<st.length;i++)g.addColorStop(st[i][0],st[i][1]); c.fillStyle=g; c.fillRect(0,0,w,h); }
+var SCENES=[
+ {n:"Dawn field",draw:function(c,w,h){
+    grad(c,w,h,[[0,"#9fb6cf"],[.45,"#e6c9a8"],[.46,"#7f8f6b"],[1,"#59683f"]]);
+    c.fillStyle="rgba(255,240,210,.5)"; c.beginPath(); c.arc(w*.7,h*.38,26,0,6.3); c.fill();
+    for(var i=0;i<260;i++){ c.fillStyle="rgba(40,50,25,"+(.05+Math.random()*.12)+")";
+      c.fillRect(Math.random()*w,h*.5+Math.random()*h*.5,2,6+Math.random()*10); } }},
+ {n:"Deep water",draw:function(c,w,h){
+    grad(c,w,h,[[0,"#1d4a63"],[1,"#07131f"]]);
+    for(var i=0;i<34;i++){ c.fillStyle="rgba(150,210,230,"+(.015+Math.random()*.045)+")";
+      c.fillRect(0,Math.random()*h,w,2+Math.random()*7); } }},
+ {n:"Neon market",draw:function(c,w,h){
+    c.fillStyle="#140a18"; c.fillRect(0,0,w,h);
+    var hu=[320,190,42,275,155];
+    for(var i=0;i<26;i++){ c.fillStyle="hsla("+hu[i%5]+",92%,"+(45+Math.random()*25)+"%,"+(.5+Math.random()*.5)+")";
+      c.fillRect(Math.random()*w,Math.random()*h,8+Math.random()*90,6+Math.random()*30); }
+    for(var j=0;j<1400;j++){ c.fillStyle="rgba(255,255,255,"+(Math.random()*.15)+")";
+      c.fillRect(Math.random()*w,Math.random()*h,2,2); } }},
+ {n:"Tiled wall",draw:function(c,w,h){   /* strongly periodic: drives the delay */
+    c.fillStyle="#cfc8bb"; c.fillRect(0,0,w,h);
+    for(var x=0;x<w;x+=w/16) for(var y=0;y<h;y+=w/16){
+      c.fillStyle="rgba(120,112,100,"+(.25+Math.random()*.1)+")"; c.fillRect(x+2,y+2,w/16-4,w/16-4); } }},
+ {n:"Pine dusk",draw:function(c,w,h){
+    grad(c,w,h,[[0,"#3b4a63"],[.6,"#25313f"],[1,"#101821"]]);
+    for(var i=0;i<16;i++){ var x=Math.random()*w, tw=10+Math.random()*26;
+      c.fillStyle="rgba(9,16,14,"+(.5+Math.random()*.45)+")";
+      c.beginPath(); c.moveTo(x,h*(.1+Math.random()*.2)); c.lineTo(x-tw,h); c.lineTo(x+tw,h); c.fill(); } }},
+ {n:"Hot rust",draw:function(c,w,h){
+    grad(c,w,h,[[0,"#7d2d10"],[1,"#c96a1d"]]);
+    for(var i=0;i<2600;i++){ c.fillStyle="rgba("+(60+Math.random()*90)+",20,8,"+(Math.random()*.4)+")";
+      c.fillRect(Math.random()*w,Math.random()*h,3+Math.random()*7,3+Math.random()*7); } }}
+];
+
+/* ================= analysis ================= */
+var MID=128;
+/* Downscale by repeated halving before the final step. A single large
+   drawImage() shrink samples rather than averages, so fine texture aliases
+   and grain and edge density read higher on a high-resolution photo than on
+   a small one of the same scene. Halving averages 2x2 blocks each pass --
+   close to a true area average, and the same in every browser. */
+function px(src,w,h){
+  var sw=src.naturalWidth||src.videoWidth||src.width, sh=src.naturalHeight||src.videoHeight||src.height, cur=src;
+  while(sw/2>=w*2 && sh/2>=h*2){
+    var hw=Math.max(w,Math.floor(sw/2)), hh=Math.max(h,Math.floor(sh/2));
+    var t=document.createElement("canvas"); t.width=hw; t.height=hh;
+    var tx=t.getContext("2d"); tx.imageSmoothingEnabled=true; tx.imageSmoothingQuality="high";
+    tx.drawImage(cur,0,0,hw,hh); cur=t; sw=hw; sh=hh;
+  }
+  var c=document.createElement("canvas"); c.width=w;c.height=h;
+  var x=c.getContext("2d",{willReadFrequently:true});
+  x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high";
+  x.drawImage(cur,0,0,w,h); return x.getImageData(0,0,w,h);
+}
+function hsv(r,g,b){ r/=255;g/=255;b/=255; var mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,h=0;
+  if(d){ if(mx===r)h=((g-b)/d+6)%6; else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4; h/=6; }
+  return [h, mx?d/mx:0, mx]; }
+function analyse(src){ var im=px(src,MID,MID); return analysePixels(im.data,MID,MID); }
+
+/* Pure function over RGBA bytes, so the mapping can be measured outside a browser. */
+function pct(a,n,p){                     /* p-th percentile of a luminance array */
+  var h=new Float32Array(64), i;
+  for(i=0;i<n;i++) h[Math.min(63,(a[i]*64)|0)]++;
+  var want=n*p, run=0;
+  for(i=0;i<64;i++){ run+=h[i]; if(run>=want) return (i+0.5)/64; }
+  return 1;
+}
+function analysePixels(d,W,H){
+  var n=W*H, i,k;
+  var sx=0,sy=0,wt=0,satS=0,satN=0,vS=0,v2S=0,rS=0,bS=0,topL=0,botL=0;
+  var rowL=new Float32Array(H), colL=new Float32Array(W), colSat=new Float32Array(W), lum=new Float32Array(n);
+  var HB=24, hist=new Float32Array(HB), histX=new Float32Array(HB), histY=new Float32Array(HB);
+  var grain=0;
+  for(i=0;i<n;i++){
+    var o=i*4, hv=hsv(d[o],d[o+1],d[o+2]), w=hv[1]*hv[2];
+    sx+=Math.cos(hv[0]*6.2831853)*w; sy+=Math.sin(hv[0]*6.2831853)*w; wt+=w;
+    /* s^2 weighting: a small vivid object should out-vote a large muted wall */
+    var hw=hv[1]*hv[1]*hv[2], hb=Math.min(HB-1,(hv[0]*HB)|0);
+    hist[hb]+=hw; histX[hb]+=Math.cos(hv[0]*6.2831853)*hw; histY[hb]+=Math.sin(hv[0]*6.2831853)*hw;
+    if(hv[2]>.15){ satS+=hv[1]; satN++; }
+    var L=(d[o]*.2126+d[o+1]*.7152+d[o+2]*.0722)/255;
+    lum[i]=L; vS+=L; v2S+=L*L; rS+=d[o]; bS+=d[o+2];
+    var y=(i/W)|0, x=i%W;
+    rowL[y]+=L; colL[x]+=L; colSat[x]+=hv[1];
+    if(y<H/2) topL+=L; else botL+=L;
+    /* grain: chroma disagreement with the pixel to the left, fine detail only */
+    if(x>0){ var q=(i-1)*4; grain+=(Math.abs(d[o]-d[q])+Math.abs(d[o+2]-d[q+2]))/510; }
+  }
+  var hue=wt>1e-6?Math.atan2(sy,sx)/6.2831853:0; if(hue<0)hue+=1;
+
+  /* Dominant hue = peak of the histogram, refined by a circular mean over its
+     neighbours. Then suppress that peak and its neighbours and take the next
+     one: a picture with two strong colours gets two chord tones, not one. */
+  function peakFrom(h2){
+    var pk=0,k2; for(k2=0;k2<HB;k2++) if(h2[k2]>h2[pk]) pk=k2;
+    var ax=0,ay=0,aw=0;
+    for(var dk=-1;dk<=1;dk++){ var j=((pk+dk)%HB+HB)%HB; ax+=histX[j]; ay+=histY[j]; aw+=h2[j]; }
+    var hh=aw>1e-6?Math.atan2(ay,ax)/6.2831853:0; if(hh<0)hh+=1;
+    return {bin:pk,hue:hh,weight:aw};
+  }
+  var hsum=0; for(k=0;k<HB;k++) hsum+=hist[k];
+  var p1=peakFrom(hist);
+  var rest=Float32Array.from(hist);
+  for(var dk2=-2;dk2<=2;dk2++) rest[((p1.bin+dk2)%HB+HB)%HB]=0;
+  var p2=peakFrom(rest);
+  var dominance=hsum>1e-6?p1.weight/hsum:0;
+  var hue2Share=hsum>1e-6?p2.weight/hsum:0;
+
+  /* ---- SALIENCE ----------------------------------------------------------
+     Every measurement above is a pixel-count average, but the eye does not
+     weight a photograph that way: a dark cave mouth framing a bright bay is a
+     frame, not a subject. Weight each pixel by how much it draws attention --
+     local luminance contrast against its surroundings, plus a mild centre
+     bias -- and re-measure the mood features through that weight.
+     Deliberately NO brightness term: a genuinely dark photograph must stay
+     dark, only a dark *surround* should lose its vote. */
+  var blur=new Float32Array(n), tmp=new Float32Array(n), R=Math.max(2,Math.round(W/16));
+  for(var by=0;by<H;by++){                       /* separable box blur, horizontal */
+    var acc=0,cnt2=0;
+    for(var bx=0;bx<W;bx++){
+      acc+=lum[by*W+bx]; cnt2++;
+      if(bx>=R*2+1){ acc-=lum[by*W+bx-R*2-1]; cnt2--; }
+      if(bx>=R) tmp[by*W+bx-R]=acc/cnt2;
+    }
+    for(var bx2=W-R;bx2<W;bx2++) tmp[by*W+bx2]=acc/cnt2;
+  }
+  for(var vx=0;vx<W;vx++){                       /* vertical */
+    var acc2=0,cnt3=0;
+    for(var vy=0;vy<H;vy++){
+      acc2+=tmp[vy*W+vx]; cnt3++;
+      if(vy>=R*2+1){ acc2-=tmp[(vy-R*2-1)*W+vx]; cnt3--; }
+      if(vy>=R) blur[(vy-R)*W+vx]=acc2/cnt3;
+    }
+    for(var vy2=H-R;vy2<H;vy2++) blur[vy2*W+vx]=acc2/cnt3;
+  }
+  var lc=new Float32Array(n);
+  for(i=0;i<n;i++) lc[i]=Math.abs(lum[i]-blur[i]);
+  /* Normalise against the 85th percentile, not the maximum: one specular
+     highlight would otherwise scale every other pixel to near zero and the
+     weighting would collapse to its floor. */
+  var lcs=new Float32Array(lc); Array.prototype.sort.call(lcs,function(a,b){return a-b;});
+  var lcRef=Math.max(1e-4, lcs[Math.floor(n*0.85)]);
+  var sal=new Float32Array(n), salSum=0, sig2=2*0.40*0.40;
+  for(i=0;i<n;i++){
+    var sx2=(i%W)/W-0.5, sy2=((i/W)|0)/H-0.5;
+    var centre=Math.exp(-(sx2*sx2+sy2*sy2)/sig2);
+    sal[i]=(0.10+0.90*Math.min(1,lc[i]/lcRef))*(0.40+0.60*centre);
+    salSum+=sal[i];
+  }
+  var salMean=0;
+  for(i=0;i<n;i++) salMean+=sal[i];
+  salMean/=n;
+  for(i=0;i<n;i++) sal[i]/=salMean;              /* mean weight is 1 */
+
+  var wL=0,wL2=0,wS=0,wSn=0,wR=0,wB=0,wW=0;
+  for(i=0;i<n;i++){
+    var o3=i*4, wt2=sal[i], hv3=hsv(d[o3],d[o3+1],d[o3+2]);
+    wL+=lum[i]*wt2; wL2+=lum[i]*lum[i]*wt2; wW+=wt2;
+    if(hv3[2]>.15){ wS+=hv3[1]*wt2; wSn+=wt2; }
+    wR+=d[o3]*wt2; wB+=d[o3+2]*wt2;
+  }
+  var salLight=wL/wW, salVar=Math.max(0,wL2/wW-salLight*salLight);
+  var salSat=wSn>1e-6?wS/wSn:0;
+  var salWarm=clamp(((wR-wB)/(wR+wB+1e-6))*2+.5);
+  var salContrast=Math.sqrt(salVar)*2.4;
+
+  var mean=vS/n, contrast=Math.sqrt(Math.max(0,v2S/n-mean*mean))*2.4;
+  var SAL=0.50;                                  /* how much salience overrides the plain average */
+  var mix=function(plain,salient){ return plain*(1-SAL)+salient*SAL; };
+  /* blend the mean with the 75th percentile: closer to how bright a picture
+     looks, rather than how much light it contains on average */
+  var lh=new Float32Array(64);
+  for(i=0;i<n;i++) lh[Math.min(63,(lum[i]*64)|0)]++;
+  var want=n*0.75, run=0, p75=1;
+  for(k=0;k<64;k++){ run+=lh[k]; if(run>=want){ p75=(k+0.5)/64; break; } }
+  var perceived=mean*0.5+p75*0.5;
+  var rm=0,rv=0;
+  for(k=0;k<H;k++) rm+=rowL[k]/W; rm/=H;
+  for(k=0;k<H;k++){ var dv=rowL[k]/W-rm; rv+=dv*dv; }
+  var vspread=clamp(Math.sqrt(rv/H)*4.5);
+  var lsat=0,rsat=0;
+  for(k=0;k<W;k++){ if(k<W/2) lsat+=colSat[k]; else rsat+=colSat[k]; }
+  var lr=clamp(Math.abs(lsat-rsat)/((lsat+rsat)/2+1e-6)*3);
+
+  /* Spatial rhythm: autocorrelation of the column-luminance signal. A fence, a
+     row of windows, floor tiles -- anything that repeats across the frame --
+     has a strong peak at its spacing, and that becomes the delay time. */
+  /* high-pass: subtract a moving average, so a broad left-to-right gradient
+     cannot masquerade as repetition */
+  var win=Math.max(3,Math.round(W/10)), hp=new Float32Array(W);
+  for(k=0;k<W;k++){
+    var a0=Math.max(0,k-win), b0=Math.min(W-1,k+win), acc0=0;
+    for(var m=a0;m<=b0;m++) acc0+=colL[m]/H;
+    hp[k]=colL[k]/H-acc0/(b0-a0+1);
+  }
+  var cm=0; for(k=0;k<W;k++) cm+=hp[k]; cm/=W;
+  var cvar=0; for(k=0;k<W;k++){ var cd=hp[k]-cm; cvar+=cd*cd; }
+  var maxLag=Math.floor(W/2), ac=new Float32Array(maxLag+1);
+  var period=0, peak=-1, acSum=0, acN=0;
+  if(cvar>1e-6){
+    for(var lag=2;lag<=maxLag;lag++){
+      var acc=0;
+      for(k=0;k+lag<W;k++) acc+=(hp[k]-cm)*(hp[k+lag]-cm);
+      ac[lag]=acc/cvar;
+    }
+    /* descend past the first local minimum before looking for the peak --
+       otherwise any smooth signal wins at the smallest lag it is offered */
+    var st=2;
+    while(st<maxLag-1 && ac[st+1]<ac[st]) st++;
+    st++;
+    for(var lag2=st;lag2<=maxLag;lag2++){
+      acSum+=ac[lag2]; acN++;
+      if(ac[lag2]>peak){ peak=ac[lag2]; period=lag2; }
+    }
+  }
+  /* Real periodicity repeats: if `period` is the true spacing, the correlation
+     peaks again at twice it. Random speckle produces a single broad hump that
+     scores just as high on its own, so score the weaker of the two. */
+  var harm=(period&&2*period<=maxLag)?ac[2*period]:peak*0.3;
+  var periodStrength=acN?clamp((Math.min(peak,harm)-acSum/acN)*2.6):0;
+  var periodN=period/W;                      /* 0..0.5 of the frame width */
+
+  var tot=0,lap=0,cnt=0;
+  for(var y2=1;y2<H-1;y2++) for(var x2=1;x2<W-1;x2++){
+    var p3=y2*W+x2;
+    var gx=-lum[p3-W-1]-2*lum[p3-1]-lum[p3+W-1]+lum[p3-W+1]+2*lum[p3+1]+lum[p3+W+1];
+    var gy=-lum[p3-W-1]-2*lum[p3-W]-lum[p3-W+1]+lum[p3+W-1]+2*lum[p3+W]+lum[p3+W+1];
+    tot+=Math.hypot(gx,gy);
+    lap+=Math.abs(4*lum[p3]-lum[p3-1]-lum[p3+1]-lum[p3-W]-lum[p3+W]); cnt++;
+  }
+  var ent=0,tiles=0;
+  for(var ty=0;ty+8<=H;ty+=8) for(var tx=0;tx+8<=W;tx+=8){
+    var hh2=new Uint8Array(16);
+    for(var yy=0;yy<8;yy++) for(var xx=0;xx<8;xx++) hh2[Math.min(15,(lum[(ty+yy)*W+tx+xx]*16)|0)]++;
+    var e=0; for(k=0;k<16;k++) if(hh2[k]){ var pr=hh2[k]/64; e-=pr*Math.log2(pr); }
+    ent+=e/4; tiles++;
+  }
+  return { hue:hue, hueDom:p1.hue, hue2:p2.hue, hue2Share:hue2Share, colourfulness:dominance,
+    dominance:dominance,
+    sat:mix(satN?satS/satN:0, salSat),
+    light:mix(perceived, salLight*0.5+p75*0.5),
+    plainLight:perceived, meanLight:mean,
+    contrast:clamp(mix(contrast, salContrast)),
+    density:clamp(tot/cnt*1.6), sharp:clamp(lap/cnt*6), entropy:clamp(ent/tiles),
+    vspread:vspread, width:lr,
+    warmth:mix(clamp(((rS-bS)/(rS+bS+1e-6))*2+.5), salWarm),
+    plainWarmth:clamp(((rS-bS)/(rS+bS+1e-6))*2+.5),
+    grain:clamp(grain/n*6), depth:clamp(Math.abs(topL-botL)/(n/2)*1.4),
+    period:periodN, periodStrength:periodStrength,
+    bands:bands(d,W,H) };
+}
+
+/* Layers now come from INSIDE one picture: split it into shadows, midtones
+   and highlights, and measure each band separately. A flat photo has one
+   populated band and plays one layer; a photo with real tonal range plays
+   three, dark at the bottom. Bands under 10% coverage are dropped, so the
+   number of layers is decided by the picture rather than by a setting. */
+function bands(d,W,H){
+  var n=W*H, i, lum=new Float32Array(n), sum=0, sq=0;
+  for(i=0;i<n;i++){ var o=i*4;
+    lum[i]=(d[o]*.2126+d[o+1]*.7152+d[o+2]*.0722)/255; sum+=lum[i]; sq+=lum[i]*lum[i]; }
+  var mean=sum/n, sd=Math.sqrt(Math.max(0,sq/n-mean*mean));
+  var lo=mean-sd*0.62, hi=mean+sd*0.62;
+  var HB=24, out=[];
+  for(var b=0;b<3;b++){
+    var hist=new Float32Array(HB), hx=new Float32Array(HB), hy=new Float32Array(HB);
+    var cnt=0, satS=0, lS=0, l2S=0, rS=0, bS=0;
+    for(i=0;i<n;i++){
+      var L=lum[i];
+      if(b===0 ? L>=lo : b===1 ? (L<lo||L>=hi) : L<hi) continue;
+      var o2=i*4, hv=hsv(d[o2],d[o2+1],d[o2+2]);
+      var hw=hv[1]*hv[1]*hv[2], bin=Math.min(HB-1,(hv[0]*HB)|0);
+      hist[bin]+=hw; hx[bin]+=Math.cos(hv[0]*6.2831853)*hw; hy[bin]+=Math.sin(hv[0]*6.2831853)*hw;
+      satS+=hv[1]; lS+=L; l2S+=L*L; rS+=d[o2]; bS+=d[o2+2]; cnt++;
+    }
+    if(cnt<n*0.10){ out.push(null); continue; }
+    var pk=0,k2,hsum=0;
+    for(k2=0;k2<HB;k2++){ hsum+=hist[k2]; if(hist[k2]>hist[pk]) pk=k2; }
+    var ax=0,ay=0,aw=0;
+    for(var dk=-1;dk<=1;dk++){ var j=((pk+dk)%HB+HB)%HB; ax+=hx[j]; ay+=hy[j]; aw+=hist[j]; }
+    var hh=aw>1e-6?Math.atan2(ay,ax)/6.2831853:0; if(hh<0)hh+=1;
+    var bm=lS/cnt;
+    out.push({ band:b, coverage:cnt/n, hue:hh, dominance:hsum>1e-6?aw/hsum:0,
+      sat:satS/cnt, light:bm, contrast:clamp(Math.sqrt(Math.max(0,l2S/cnt-bm*bm))*2.4),
+      warmth:clamp(((rS-bS)/(rS+bS+1e-6))*2+.5) });
+  }
+  return out;   /* [shadows, midtones, highlights], nulls where too small */
+}
+
+/* ================= calibration ================= */
+/* Raw features are not uniform over [0,1] -- real photographs cluster in the
+   middle-low part of every scale (measured: saturation 0.02-0.37, edge density
+   0.10-0.28 over twelve ordinary scenes). Each passes through a logistic
+   centred on the everyday median; it stretches the crowded middle and never
+   fully saturates, so extremes still separate. */
+var CAL={
+          light:[0.514,8.7], sat:[0.372,11.3], contrast:[0.447,14.4],
+          density:[0.351,9.8], entropy:[0.352,13.3], sharp:[0.376,6.9],
+          vspread:[0.491,6.8], width:[0.231,3.8], warmth:[0.750,4.8],
+          grain:[0.105,20.0], depth:[0.118,13.7], dominance:[0.760,7.5]
+        };
+function sig(v,mid,k){ return 1/(1+Math.exp(-k*(v-mid))); }
+function calib(f){
+  var c={},k;
+  for(k in CAL) c[k]=sig(f[k]===undefined?0:f[k],CAL[k][0],CAL[k][1]);
+  c.hue=f.hue; c.hueDom=f.hueDom; c.hue2=f.hue2; c.hue2Share=f.hue2Share;
+  c.period=f.period; c.periodStrength=f.periodStrength;
+  return c;
+}
+
+/* ================= harmony ================= */
+var FIFTHS=[0,7,2,9,4,11,6,1,8,3,10,5];
+var PRETTY=["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+/* Each chord is defined by REGISTER ROLE, not as one interval stack repeated
+   at every height. Sevenths and ninths beat badly below C3, so the bass role
+   only ever carries root and fifth; the triad lives in the middle; the colour
+   tones (9ths, 6ths, #11s) sit up top where they read as air, not mud. */
+var Q={
+  maj9:    {n:"maj9",    f:"maj9",    mid:[0,4,7], top:[2,4,7,11], sc:[0,2,4,5,7,9,11]},
+  add9:    {n:"add9",    f:"add9",    mid:[0,4,7], top:[2,4,7],    sc:[0,2,4,5,7,9,11]},
+  maj69:   {n:"6/9",     f:"maj69",   mid:[0,4,9], top:[2,4,9],    sc:[0,2,4,5,7,9,11]},
+  sus2:    {n:"sus2",    f:"sus2",    mid:[0,7,14],top:[2,7,9],    sc:[0,2,5,7,9,10]},
+  quartal: {n:"quartal", f:"quartal", mid:[0,5,10],top:[0,5,10],   sc:[0,2,5,7,10]},
+  lydian:  {n:"maj7\u266F11", f:"maj7s11", mid:[0,4,7], top:[2,6,11], sc:[0,2,4,6,7,9,11]},
+  min9:    {n:"min9",    f:"min9",    mid:[0,3,7], top:[2,3,7],    sc:[0,2,3,5,7,9,10]},
+  min7:    {n:"min7",    f:"min7",    mid:[0,3,7], top:[3,7,10],   sc:[0,2,3,5,7,8,10]},
+  minb9:   {n:"min\u266D9", f:"minb9", mid:[0,3,7], top:[1,3,8],  sc:[0,1,3,5,7,8,10]}
+};
+/* ---- COLOUR -> INSTRUMENT ------------------------------------------------
+   Hue picked the key but said nothing about the sound. Now it also picks the
+   harmonic recipe, which is what actually makes one instrument sound unlike
+   another: each family is a set of relative harmonic amplitudes built into a
+   PeriodicWave, so these are genuinely different timbres rather than three
+   stock waveforms. The families follow how the colours themselves read --
+   reds burn, yellows ring, greens are hollow and woody, blues are glassy,
+   violets are bowed and thick, pinks are soft. */
+var TIMBRES=[
+  {n:"ember", h:[1,0.55,0.42,0.24,0.16,0.10,0.06,0.04]},  /* red      — reedy, burning  */
+  {n:"gold",  h:[1,0.18,0.55,0.12,0.35,0.08,0.22,0.14]},  /* yellow   — bell, metallic  */
+  {n:"moss",  h:[1,0.10,0.34,0.06,0.18,0.04,0.10,0.03]},  /* green    — woody, hollow   */
+  {n:"tide",  h:[1,0.22,0.30,0.12,0.16,0.06,0.09,0.03]},  /* blue     — glassy, pure    */
+  {n:"dusk",  h:[1,0.45,0.30,0.22,0.17,0.13,0.10,0.08]},  /* violet   — bowed strings   */
+  {n:"rose",  h:[1,0.30,0.12,0.08,0.05,0.03,0.02,0.01]}   /* magenta  — soft, breathy   */
+];
+function timbreFor(hue){
+  var h=((hue%1)+1)%1;
+  if(h<0.10||h>=0.94) return 0;
+  if(h<0.19) return 1;
+  if(h<0.46) return 2;
+  if(h<0.70) return 3;
+  if(h<0.83) return 4;
+  return 5;
+}
+/* The bass keeps only its lowest harmonics whatever the colour, or the low end
+   growls; a warm picture is damped further, which is what used to be done
+   crudely by banning sawtooth. */
+var ROLE_HARM={bass:0.34, mid:0.78, top:1.0};
+function waveFor(G,idx,role,valence,soft){
+  soft=soft||1;                           /* <1 rolls the upper harmonics off harder */
+  var damp=ROLE_HARM[role]*(1.10-valence*0.30)*soft;
+  var key=idx+"|"+role+"|"+Math.round(valence*10)+"|"+Math.round(soft*20);
+  if(G.waves[key]) return G.waves[key];
+  var h=TIMBRES[idx].h, real=new Float32Array(h.length+1), imag=new Float32Array(h.length+1);
+  for(var k=0;k<h.length;k++) imag[k+1]=h[k]*Math.pow(damp,k);
+  var w=G.ctx.createPeriodicWave(real,imag);
+  G.waves[key]=w;
+  return w;
+}
+
+var BASS=[0,7];                                 /* root and fifth only, always */
+var ROLE_BASE={bass:36, mid:48, top:60};
+/* More drift than before in the upper voices: the "looming" that detune was
+   blamed for turned out to come from duplicate pitches and sevenths in the
+   bass, both since fixed, so the body and top can breathe again. */
+var ROLE_DETUNE={bass:0.30, mid:0.85, top:1.25};
+/* Floors keep the body and top from being filtered into a hum: the old curve
+   sank the middle layer to 400 Hz on an ordinary photo. */
+var ROLE_CUT_FLOOR={bass:240, mid:780, top:2200};
+
+/* The affect grid: warmth of feeling across, energy down. A single
+   bright-to-dark ladder put the median photograph in its minor half and, with
+   a steep curve, never landed in the middle at all. Two axes give nine
+   outcomes and let saturation carry feeling: a vivid picture is not
+   automatically a sad one. */
+var MOODS=[
+  ["serene","warm","joyful"],
+  ["open","suspended","bright"],
+  ["wistful","moody","tense"]
+];
+var GRID=[
+  /*            calm        mid          energetic   */
+  /* warm   */ [Q.maj9,    Q.add9,      Q.maj69 ],
+  /* neutral*/ [Q.sus2,    Q.quartal,   Q.lydian],
+  /* cool   */ [Q.min9,    Q.min7,      Q.minb9 ]
+];
+function rootOf(f){
+  /* One colourful object should pick the key instead of being averaged into
+     the wall behind it. Near-grey frames have no dominant hue worth trusting,
+     so they fall back to warm/cool balance, which is stable across angles. */
+  var grey=f.dominance<0.22 || f.sat<0.07;
+  var h=grey ? ((f.warmth*1.9+f.hue*0.55)%1+1)%1 : f.hueDom;
+  return { pc:FIFTHS[Math.round(h*12)%12], grey:grey };
+}
+/* VALENCE — how warm the picture feels. Brightness leads, but saturation and
+   colour temperature carry real weight, so a vivid cool photo and a washed-out
+   warm one no longer collapse onto the same mood.
+   AROUSAL — how much is going on: contrast, edge density, saturation, grain. */
+function affect(c){
+  var val=0.45*c.light + 0.22*c.sat + 0.25*c.warmth + 0.08*(1-c.density);
+  var aro=0.38*c.contrast + 0.30*c.density + 0.20*c.sat + 0.12*c.grain;
+  /* Centred and scaled on real photographs rather than synthetic test scenes:
+     their measured spread is narrow (0.19 on both axes), so a gentle curve
+     leaves every picture in the middle band and the grid never gets used. */
+  /* Centre and slope fitted to a corpus of real photographs (arousal re-centred
+     after the corpus was re-decoded with EXIF orientation applied): the
+     median lands mid-grid and the 10th-90th percentiles span roughly
+     0.15-0.85, so all nine cells are reachable. */
+  return { valence:sig(val,0.438,11.1), arousal:sig(aro,0.524,7.6) };
+}
+function band(v){ return v>0.63?2:v<0.37?0:1; }
+function qualityOf(c){
+  var a=affect(c);
+  /* row 0 = warm feeling, row 2 = cool; column 0 = calm, column 2 = energetic */
+  var r=2-band(a.valence), col=band(a.arousal);
+  var q=GRID[r][col];
+  return { q:q, mood:MOODS[r][col] };
+}
+/* snap any pitch class into the primary chord's scale, so extra layers and
+   second colours stay consonant no matter what they were photographed from */
+function snap(pc,rootPc,scale,notRoot){
+  var rel=((pc-rootPc)%12+12)%12, best=null, bd=99;
+  for(var i=0;i<scale.length;i++){
+    if(notRoot && scale[i]===0) continue;     /* a second colour is never the root */
+    var d=Math.min(Math.abs(scale[i]-rel),12-Math.abs(scale[i]-rel));
+    if(d<bd){ bd=d; best=scale[i]; }
+  }
+  return best===null?scale[0]:best;
+}
+
+/* ================= patch ================= */
+/* ONE photo, one pad. The picture's own tonal bands become the layers: its
+   shadows play the bottom, its midtones the middle, its highlights the top,
+   each with its own hue, voice count, filter and position. A flat photo has
+   one populated band and plays one layer; a photo with real range plays three.
+   Nothing stacks across photos -- every picture is its own pad. */
+function buildPatch(f){
+  var c=calib(f), br=rootOf(f), qq=qualityOf(c), q=qq.q, af=affect(c);
+  var bs=(f.bands||[]).filter(function(b){ return b; });
+  if(!bs.length) bs=[{band:1,coverage:1,hue:f.hueDom,dominance:f.dominance,sat:f.sat,
+                      light:f.light,contrast:f.contrast,warmth:f.warmth}];
+  var nL=bs.length;
+  /* Which register each band plays. Every layer shares ONE root: layers used to
+     carry their own transposed stack, which made the whole thing polychordal
+     and is most of why it sounded tense. */
+  var ROLES = nL===1 ? ["mid"] : nL===2 ? ["bass","top"] : ["bass","mid","top"];
+  var layers=[], used={}, i;
+
+  for(i=0;i<nL;i++){
+    var bd=bs[i], bc=calib(bd), role=ROLES[i];
+    var dom=bc.dominance;
+    var set = role==="bass" ? BASS : q[role];
+    /* saturation decides how much of the role's set sounds */
+    var want = role==="bass" ? 2 : (bc.sat<.30?2 : bc.sat<.62?3 : 4);
+    want = Math.max(2, Math.min(Math.min(set.length,SLOTS), want + (dom>0.62?-1:dom<0.34?1:0)));
+
+    var base=ROLE_BASE[role];
+    /* lift the top voice clear of whatever the middle one ended on: a whole
+       tone straddling two layers beats as badly as one inside a chord */
+    if(role==="top"){
+      var highest=0,u;
+      for(u in used) if(+u>highest) highest=+u;
+      var lowest=base+br.pc+Math.min.apply(null,set);
+      while(highest && lowest-highest<3){ base+=12; lowest+=12; }
+    }
+    var notes=[], k;
+    for(k=0;k<want;k++){
+      var m=base+br.pc+set[k];
+      if(used[m]) continue;          /* never two layers on the same pitch */
+      used[m]=1; notes.push(m);
+    }
+    if(!notes.length){ notes.push(base+br.pc+set[0]+12); }
+
+    /* a genuine second colour joins the top voice, never the bass */
+    var second=null;
+    if(role==="top" && notes.length<SLOTS && f.hue2Share>0.16 && !br.grey){
+      var pc2=(br.pc+snap(FIFTHS[Math.round(f.hue2*12)%12],br.pc,q.sc,true))%12;
+      /* in the scale is not enough: a scale tone can still sit a semitone or a
+         tritone from a note already sounding (an E-flat over an E), so such a
+         colour tone is dropped rather than added */
+      var clashes=false, uk;
+      for(uk in used){ var dd=((pc2-(+uk%12))%12+12)%12; if(dd===1||dd===11||dd===6){ clashes=true; break; } }
+      if(clashes) pc2=-1;
+      var m2=pc2<0?-1:base+pc2, tries=0;
+      /* the added colour needs the same clearance as the layer it joins */
+      while(pc2>=0 && tries<3){
+        var clash=false,u2;
+        for(u2 in used) if(Math.abs(+u2-m2)<3){ clash=true; break; }
+        if(!clash) break;
+        m2+=12; tries++;
+      }
+      if(pc2>=0 && tries<3 && !used[m2]){ used[m2]=1; second=m2; notes.push(m2); }
+    }
+
+    layers.push({
+      pc:br.pc, notes:notes, voices:notes.length, octave:Math.floor(base/12)-1, second:second,
+      coverage:bd.coverage, role:role,
+      /* detune scales with register: beating that is pleasant up top is mud
+         at the bottom, so the bass barely moves */
+      detune:(3+c.entropy*8)*(1.25-dom*0.45)*ROLE_DETUNE[role],
+      cutoff:Math.max(ROLE_CUT_FLOOR[role],
+                      300*Math.pow(23,Math.pow(bc.light,1.15))*(0.72+af.arousal*0.75)),
+      q:0.5+bc.contrast*1.7,
+      lfoRate:(0.025+c.density*0.22)*(1+i*0.22)*(0.65+af.arousal*0.9),
+      lfoDepth:0.25+bc.contrast*0.65,
+      pan:(nL===1?0:(i/(nL-1)*2-1)*(0.25+c.width*0.5)),
+      /* Mix balance, measured: with the bass layer loudest, 74-95% of every
+         pad's energy sat below 300 Hz and the body and top were buried. The
+         bass now supports rather than leads. */
+      gain:(role==="bass"?0.50:role==="mid"?0.95:1.05)*(0.55+Math.min(0.45,bd.coverage*1.1)),
+      /* No sawtooth in the bass -- its harmonics are what make a low chord
+         growl. And none in a warm picture either: a saw through a resonant
+         lowpass is most of what reads as "tense" regardless of the notes. */
+      /* the stock waveform is gone -- what plays is the colour's harmonic
+         recipe, damped by register and by how warm the picture feels */
+      wave: TIMBRES[timbreFor(bd.dominance<0.22?f.hueDom:bd.hue)].n,
+      /* each band's own hue picks its own instrument, so a picture whose
+         shadows and highlights differ in colour is scored for two instruments */
+      timbre:timbreFor(bd.dominance<0.22?f.hueDom:bd.hue),
+      grey:bd.dominance<0.22, dom:dom, band:bd.band, c:bc, f:bd
+    });
+  }
+
+  var fx={
+    delayTime: 0.09+f.period*1.55,
+    delayFeedback: clamp((f.periodStrength-0.42)*1.15),
+    delayMix: clamp((f.periodStrength-0.42)*0.95),
+    chorusDepth: 0.0012+c.grain*0.006,
+    chorusRate: 0.15+c.grain*0.75,
+    preDelay: 0.005+c.depth*0.085,
+    wet: clamp(0.18+(1-c.sharp)*0.62),
+    /* the airy noise bed reads as unease, so a warm picture gets far less */
+    air: Math.pow(c.entropy,1.6)*0.9*(1.25-af.valence*0.75),
+    /* long tail: soft focus and depth make a bigger space, 4-11 s */
+    tail: 4+7*clamp(0.55*(1-c.sharp)+0.45*c.depth),
+    tailSend: 0.22+0.30*(1-c.sharp),
+    /* the halo: bright, warm pictures shimmer, dark ones barely do */
+    shimmer: clamp(0.15+0.55*af.valence+0.30*c.light),
+    sub: 0.03+0.025*(1-af.arousal)
+  };
+  return { rootName:PRETTY[br.pc], root:br.pc, quality:q.n, qfile:q.f, scale:q.sc,
+    layers:layers, fx:fx, c:c, f:f, grey:br.grey, affect:af, mood:qq.mood,
+    timbre:TIMBRES[timbreFor(br.grey?f.hue:f.hueDom)].n };
+}
+function allNotes(p){
+  var out=[],i,j,t=state.transpose;
+  for(i=0;i<p.layers.length;i++) for(j=0;j<p.layers[i].notes.length;j++) out.push(p.layers[i].notes[j]+t);
+  return out;
+}
+var hz=function(m){ return 440*Math.pow(2,(m-69)/12); };
+
+/* ================= graph ================= */
+/* Built identically for the live context and the offline render, so what you
+   export is what you heard. Fixed shape: MAXL layers x 5 slots, unused silent. */
+var SLOTS=4;          /* max notes per layer; 4x3x2 = 24 oscillators, not 30 */
+var IR_SECONDS=2.6;   /* 4.2s of stereo convolution is the heaviest node on a phone */
+function impulse(ctx,sec,decay,chans){
+  chans=chans||2;
+  var L=Math.floor(ctx.sampleRate*sec), b=ctx.createBuffer(chans,L,ctx.sampleRate);
+  for(var ch=0;ch<chans;ch++){ var d=b.getChannelData(ch);
+    for(var i=0;i<L;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/L,decay); }
+  return b;
+}
+/* Phones with few cores get a cheaper room and no chorus. The offline render
+   is never throttled -- it has no deadline, so an export is always full
+   quality whatever it was played back on. */
+var LOWPOWER=(function(){
+  try{
+    var cores=navigator.hardwareConcurrency||8;
+    var phone=window.matchMedia && matchMedia("(pointer: coarse)").matches;
+    return cores<=4 || (phone && cores<=6);
+  }catch(e){ return false; }
+})();
+/* Linear to 0.8, then a smooth tanh knee that can never exceed 0.98. Chrome's
+   DynamicsCompressor applies automatic makeup gain, so a compressor alone
+   cannot promise the output stays under full scale -- this can. */
+function ceilingCurve(){
+  var n=4096, c=new Float32Array(n), knee=0.8, room=0.18;
+  for(var i=0;i<n;i++){
+    /* a WaveShaper maps input -1..1 across the array; build it over that range */
+    var x=i/(n-1)*2-1, a=Math.abs(x), y=a<=knee ? a : knee+room*Math.tanh((a-knee)/room);
+    c[i]=x<0?-y:y;
+  }
+  return c;
+}
+function satCurve(k){
+  var n=1024, c=new Float32Array(n), norm=Math.tanh(k);
+  for(var i=0;i<n;i++){ var x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/norm; }
+  return c;
+}
+function graph(ctx,eco){
+  var out=ctx.createGain(); out.gain.value=0;
+  var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-17; comp.ratio.value=5;
+  /* clears sub-bass rumble that the low layer's detuning otherwise stirs up */
+  /* 30 Hz rather than 48: the sub voice below sits at 33-62 Hz and must get through */
+  var hp=ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=30; hp.Q.value=0.7;
+  /* a brick wall after it: nine detuned voices plus delay and reverb can sum
+     past 1.0, and clipping at the output crackles just like an underrun */
+  var lim=ctx.createDynamicsCompressor();
+  lim.threshold.value=-1.5; lim.ratio.value=20; lim.knee.value=0;
+  lim.attack.value=0.003; lim.release.value=0.25;
+  var trim=ctx.createGain(); trim.gain.value=0.72;
+  out.connect(hp); hp.connect(comp); comp.connect(trim); trim.connect(lim);
+  var ceil=ctx.createWaveShaper(); ceil.curve=ceilingCurve(); ceil.oversample="2x";
+  lim.connect(ceil); ceil.connect(ctx.destination);
+
+  /* Voices sum into busIn, pass through a gentle tanh saturator, then feed the
+     effects. Mild saturation adds low-order harmonics and glues the layers --
+     the difference between nine separate sine-ish tones and one instrument. */
+  var busIn=ctx.createGain(); busIn.gain.value=1;
+  var shaper=ctx.createWaveShaper(); shaper.curve=satCurve(1.6); shaper.oversample="none";
+  var satTrim=ctx.createGain(); satTrim.gain.value=0.75;
+  var bus=ctx.createGain(); bus.gain.value=1;
+  busIn.connect(shaper); shaper.connect(satTrim); satTrim.connect(bus);
+
+  /* ---- long tail: a small feedback-delay network ------------------------
+     Four damped feedback delays behind two allpass diffusers. It gives the
+     6-11 s tail a drone needs for a fraction of what the same length of
+     convolution would cost on a phone. Bass is kept out of it -- a long low
+     tail is mud, not atmosphere. */
+  var fdnIn=ctx.createGain(); fdnIn.gain.value=1;
+  var fdnSend=ctx.createGain(); fdnSend.gain.value=0.3;
+  var fdnHp=ctx.createBiquadFilter(); fdnHp.type="highpass"; fdnHp.frequency.value=180; fdnHp.Q.value=-3;
+  var ap1=ctx.createBiquadFilter(); ap1.type="allpass"; ap1.frequency.value=900;  ap1.Q.value=0.6;
+  var ap2=ctx.createBiquadFilter(); ap2.type="allpass"; ap2.frequency.value=2700; ap2.Q.value=0.6;
+  var fdnOut=ctx.createGain(); fdnOut.gain.value=0.38;
+  bus.connect(fdnSend); fdnSend.connect(fdnIn);
+  fdnIn.connect(fdnHp); fdnHp.connect(ap1); ap1.connect(ap2);
+  var combs=[];
+  [0.0797,0.0937,0.1103,0.1291].forEach(function(dt,ix){
+    var cd=ctx.createDelay(0.2); cd.delayTime.value=dt;
+    /* NB: Web Audio reads Q on lowpass/highpass in DECIBELS. 0.5 here would be
+       a +0.5 dB resonant bump, which inside a feedback loop lifts the loop gain
+       towards 1 at the cutoff and makes 2-8 kHz ring on indefinitely. -3 dB is
+       Butterworth: flat, no peak, highs simply decay faster than lows. */
+    var cl=ctx.createBiquadFilter(); cl.type="lowpass"; cl.frequency.value=3200; cl.Q.value=-3;
+    var cg=ctx.createGain(); cg.gain.value=0.8;
+    var cp=ctx.createStereoPanner(); cp.pan.value=(ix%2?0.7:-0.7);
+    ap2.connect(cd); cd.connect(cl); cl.connect(cg); cg.connect(cd);
+    cl.connect(cp); cp.connect(fdnOut);
+    combs.push({g:cg,t:dt});
+  });
+  fdnOut.connect(out);
+
+  /* ---- sub: one pure sine an octave under the bass root, for weight ---- */
+  var sub=ctx.createOscillator(); sub.type="sine"; sub.frequency.value=41;
+  var subG=ctx.createGain(); subG.gain.value=0;
+  sub.connect(subG); subG.connect(busIn); sub.start();
+
+  /* ---- shimmer: the chord's root and fifth two octaves up, sent ONLY into
+     the long tail, so it never sounds as notes -- only as a halo above the
+     pad. The classic ambient move. */
+  var shimG=ctx.createGain(); shimG.gain.value=0;
+  shimG.connect(fdnIn);
+  var shim=[0,1].map(function(){
+    var so=ctx.createOscillator(); so.type="sine"; so.frequency.value=880;
+    so.connect(shimG); so.start(); return so;
+  });
+
+  /* chorus: two short modulated delays, opposed, for ensemble width */
+  var chA=ctx.createDelay(0.05), chB=ctx.createDelay(0.05);
+  chA.delayTime.value=0.012; chB.delayTime.value=0.019;
+  var chPanA=ctx.createStereoPanner(), chPanB=ctx.createStereoPanner();
+  chPanA.pan.value=-0.6; chPanB.pan.value=0.6;
+  var chLfo=ctx.createOscillator(); chLfo.type="sine"; chLfo.frequency.value=0.3;
+  var chAmtA=ctx.createGain(), chAmtB=ctx.createGain();
+  chAmtA.gain.value=0.002; chAmtB.gain.value=-0.002;
+  chLfo.connect(chAmtA); chAmtA.connect(chA.delayTime);
+  chLfo.connect(chAmtB); chAmtB.connect(chB.delayTime);
+  chLfo.start();
+  var chMix=ctx.createGain(); chMix.gain.value=0.5;
+  if(!eco){
+    bus.connect(chA); chA.connect(chPanA); chPanA.connect(chMix);
+    bus.connect(chB); chB.connect(chPanB); chPanB.connect(chMix);
+  }
+
+  /* feedback delay, damped so repeats darken instead of piling up */
+  var dly=ctx.createDelay(2.0); dly.delayTime.value=0.3;
+  var fb=ctx.createGain(); fb.gain.value=0;
+  var damp=ctx.createBiquadFilter(); damp.type="lowpass"; damp.frequency.value=2600;
+  var dlyMix=ctx.createGain(); dlyMix.gain.value=0;
+  bus.connect(dly); chMix.connect(dly);
+  dly.connect(damp); damp.connect(fb); fb.connect(dly);
+  dly.connect(dlyMix);
+
+  var pre=ctx.createDelay(0.25); pre.delayTime.value=0.02;
+  var wet=ctx.createGain(), dry=ctx.createGain();
+  bus.connect(dry); chMix.connect(dry); dlyMix.connect(dry);
+  bus.connect(pre); chMix.connect(pre); dlyMix.connect(pre);
+  if(eco){
+    /* on a weak phone the feedback network does all the reverb work: it is
+       both cheaper and longer than the convolver it replaces */
+    pre.connect(fdnIn);
+  } else {
+    var rev=ctx.createConvolver(); rev.buffer=impulse(ctx,IR_SECONDS,2.7,2);
+    pre.connect(rev); rev.connect(wet);
+  }
+  dry.connect(out); wet.connect(out);
+
+  var nb=ctx.createBuffer(1,Math.floor(ctx.sampleRate*3),ctx.sampleRate), nd=nb.getChannelData(0);
+  for(var j=0;j<nd.length;j++) nd[j]=Math.random()*2-1;
+  var noise=ctx.createBufferSource(); noise.buffer=nb; noise.loop=true;
+  var nhp=ctx.createBiquadFilter(); nhp.type="highpass"; nhp.frequency.value=2200;
+  var ngain=ctx.createGain(); ngain.gain.value=0;
+  noise.connect(nhp); nhp.connect(ngain); ngain.connect(bus); noise.start();
+
+  var layers=[];
+  for(var L=0;L<MAXL;L++){
+    var lg=ctx.createGain(); lg.gain.value=0;
+    var lf=ctx.createBiquadFilter(); lf.type="lowpass"; lf.frequency.value=1200; lf.Q.value=1;
+    var lp=ctx.createStereoPanner(); lp.pan.value=0;
+    lg.connect(lf); lf.connect(lp); lp.connect(busIn);
+    var lfo=ctx.createOscillator(); lfo.type="sine"; lfo.frequency.value=0.06;
+    var lfoAmt=ctx.createGain(); lfoAmt.gain.value=300;
+    lfo.connect(lfoAmt); lfoAmt.connect(lf.frequency); lfo.start();
+    /* independent slow swells per layer, at rates that never line up, so the
+       balance between bass, body and top keeps drifting -- a drone that
+       evolves instead of sitting still */
+    var evo=ctx.createOscillator(); evo.type="sine"; evo.frequency.value=[0.031,0.047,0.067][L];
+    var evoAmt=ctx.createGain(); evoAmt.gain.value=0;
+    evo.connect(evoAmt); evoAmt.connect(lg.gain); evo.start();
+    var slots=[];
+    for(var s=0;s<SLOTS;s++){
+      var g=ctx.createGain(); g.gain.value=0;
+      g.connect(lg);
+      var oscs=[];
+      for(var o=0;o<2;o++){
+        var osc=ctx.createOscillator(); osc.type="sawtooth"; osc.frequency.value=110;
+        osc.detune.value=(o?1:-1)*6;
+        var og=ctx.createGain(); og.gain.value=.5;
+        osc.connect(og); og.connect(g); osc.start();
+        oscs.push(osc);
+      }
+      slots.push({g:g,oscs:oscs});
+    }
+    layers.push({g:lg,filt:lf,pan:lp,lfo:lfo,lfoAmt:lfoAmt,evo:evo,evoAmt:evoAmt,slots:slots});
+  }
+  return {ctx:ctx,waves:{},out:out,bus:bus,dry:dry,wet:wet,pre:pre,dly:dly,fb:fb,dlyMix:dlyMix,
+    fdnSend:fdnSend,combs:combs,sub:sub,subG:subG,shim:shim,shimG:shimG,
+    chMix:chMix,chAmtA:chAmtA,chAmtB:chAmtB,chLfo:chLfo,ngain:ngain,layers:layers};
+}
+
+function applyTo(G,p,glide){
+  var ctx=G.ctx, t=ctx.currentTime, T=Math.max(0.001,glide/3);
+  var set=function(param,v){ if(glide<=0) param.value=v; else param.setTargetAtTime(v,t,T); };
+  var tr=state.transpose, L,s,o;
+  for(L=0;L<MAXL;L++){
+    var lay=G.layers[L], src=p.layers[L], on=!!src;
+    if(on){
+      for(s=0;s<SLOTS;s++){
+        var slot=lay.slots[s], has=s<src.notes.length;
+        var f=hz((has?src.notes[s]:src.notes[0])+tr);
+        var pw=waveFor(G,src.timbre,src.role,p.affect?p.affect.valence:0.5,p.soft);
+        for(o=0;o<2;o++){
+          set(slot.oscs[o].frequency,f);
+          set(slot.oscs[o].detune,(o?1:-1)*src.detune);
+          slot.oscs[o].setPeriodicWave(pw);
+        }
+        /* upper notes quieter, so a stack stays a pad and not a pipe organ */
+        set(slot.g.gain, has ? (0.17/Math.max(1,src.notes.length*0.5))*(1-s*0.10) : 0);
+      }
+      set(lay.g.gain,src.gain);
+      set(lay.evoAmt.gain,src.gain*0.18);
+      set(lay.filt.frequency,src.cutoff);
+      set(lay.filt.Q,src.q);
+      set(lay.pan.pan,src.pan);
+      set(lay.lfo.frequency,src.lfoRate);
+      set(lay.lfoAmt.gain,src.cutoff*0.5*src.lfoDepth);
+    } else {
+      set(lay.g.gain,0);
+      set(lay.evoAmt.gain,0);     /* or the swell would drive a silent layer negative */
+    }
+  }
+  var fx=p.fx;
+  /* atmosphere */
+  set(G.fdnSend.gain,fx.tailSend);
+  G.combs.forEach(function(cb){ set(cb.g.gain, Math.pow(10,-3*cb.t/fx.tail)); });
+  set(G.sub.frequency, hz(24+((p.root+tr)%12+12)%12));
+  set(G.subG.gain, fx.sub);
+  set(G.shim[0].frequency, hz(84+((p.root+tr)%12+12)%12));
+  set(G.shim[1].frequency, hz(91+((p.root+tr)%12+12)%12));
+  set(G.shimG.gain, fx.shimmer*0.08);
+  set(G.dly.delayTime,fx.delayTime);
+  set(G.fb.gain,fx.delayFeedback);
+  set(G.dlyMix.gain,fx.delayMix);
+  set(G.chAmtA.gain,fx.chorusDepth);
+  set(G.chAmtB.gain,-fx.chorusDepth);
+  set(G.chLfo.frequency,fx.chorusRate);
+  set(G.chMix.gain,0.34+fx.chorusDepth*40);
+  set(G.pre.delayTime,fx.preDelay);
+  set(G.wet.gain,fx.wet);
+  set(G.dry.gain,1-fx.wet*0.42);
+  set(G.ngain.gain,fx.air*0.012);
+}
+
+/* ================= live ================= */
+var A=null, master=0.75;
+function live(){
+  if(!A){
+    var C=window.AudioContext||window.webkitAudioContext, ctx;
+    /* "playback" asks for the largest buffer the browser will give. A drone
+       needs no low latency, and the default "interactive" hint is the usual
+       cause of crackling on phones -- the audio thread cannot refill a tiny
+       buffer in time while the page is also drawing. */
+    try{ ctx=new C({latencyHint:"playback"}); }catch(e){ ctx=new C(); }
+    A=graph(ctx,LOWPOWER);
+  }
+  return A;
+}
+
+
+/* ======================================================================
+   TUNING LAB
+   The five settings below are the same for every photo, so ratings are
+   comparable across a whole batch. Each keeps the photo's own key, timbre,
+   layers and effects from the engine above and changes one thing at a time:
+   the harmony, how loud the top is, how soft the tone is, and how big the
+   space is. What you prefer, photo by photo, is what the mapping gets
+   fitted to.
+   ====================================================================== */
+var LAB_VERSION=1;
+var VARIANTS=[
+  {id:"auto", name:"As mapped", blurb:"What the app plays today"},
+  {id:"pure", name:"Pure", blurb:"Fifths and octaves only — the calmest drone", chord:"fifths",
+   mid:[0,7,12], top:[7,12,19], soft:0.55, topGain:0.55, topCut:2600, shimmer:0.5, tail:1.0, bass:1.0},
+  {id:"warm", name:"Warm", blurb:"Major with a ninth, softer top", chord:"add9",
+   mid:[0,4,7], top:[2,4,7], soft:0.80, topGain:0.65, topCut:3000, shimmer:0.7, tail:1.0, bass:1.0},
+  {id:"airy", name:"Airy", blurb:"Bright 6/9 in a big, shimmering space", chord:"6/9",
+   mid:[0,4,9], top:[2,4,9], soft:0.80, topGain:0.70, topCut:2800, shimmer:1.4, tail:1.5, bass:0.8},
+  {id:"deep", name:"Deep", blurb:"Soft minor, weight in the low end", chord:"minor",
+   mid:[0,3,7], top:[7,12,15], soft:0.70, topGain:0.55, topCut:2200, shimmer:0.4, tail:1.2, bass:1.3}
+];
+/* Every variant voicing is checked below for semitones and tritones between
+   ANY two notes in the stack: the complaint was dissonance, so none of the
+   four alternatives may contain one. */
+function variantPatch(base,v){
+  if(v.id==="auto") return base;
+  var p=JSON.parse(JSON.stringify(base)), used={}, pc=p.root;
+  p.layers.forEach(function(l){
+    var set = l.role==="bass" ? [0,7] : v[l.role];
+    var b=ROLE_BASE[l.role];
+    if(l.role==="top"){
+      var hi=0,u; for(u in used) if(+u>hi) hi=+u;
+      var lo=b+pc+Math.min.apply(null,set);
+      while(hi && lo-hi<3){ b+=12; lo+=12; }
+    }
+    var notes=[];
+    set.forEach(function(iv){ var m=b+pc+iv; if(!used[m] && notes.length<SLOTS){ used[m]=1; notes.push(m); } });
+    l.notes=notes; l.voices=notes.length; l.second=null;
+    if(l.role==="top"){ l.gain*=v.topGain; l.cutoff=Math.min(l.cutoff,v.topCut); }
+    if(l.role==="bass") l.gain*=v.bass;
+  });
+  p.soft=v.soft;
+  p.fx.shimmer=clamp(p.fx.shimmer*v.shimmer);
+  p.fx.tail=Math.min(11,p.fx.tail*v.tail);
+  p.fx.tailSend=Math.min(0.7,p.fx.tailSend*(v.tail>1?1.25:1));
+  p.quality=v.chord;
+  return p;
+}
+function harshPairs(p){
+  var all=p.layers.reduce(function(a,l){ return a.concat(l.notes); },[]), bad=0;
+  for(var i=0;i<all.length;i++) for(var j=i+1;j<all.length;j++){
+    var d=Math.abs(all[j]-all[i])%12; if(d===1||d===11||d===6) bad++;
+  }
+  return bad;
+}
+
+/* ---------------- state ---------------- */
+var state={transpose:0};
+var lab={f:null, base:null, label:"", thumb:"", ratings:{}, playing:null, canvas:null};
+var view=$("view"), vctx=view.getContext("2d");
+
+function status(msg,err){ var s=$("status"); s.textContent=msg||""; s.className="status"+(err?" err":""); }
+
+/* ---------------- image in ---------------- */
+function loadImage(img,label){
+  var iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+  var sc=Math.min(1,900/Math.max(iw,ih)), W=Math.round(iw*sc), H=Math.round(ih*sc);
+  var c=document.createElement("canvas"); c.width=W; c.height=H;
+  c.getContext("2d").drawImage(img,0,0,W,H);
+  view.width=W; view.height=H; vctx.drawImage(c,0,0);
+  var t=document.createElement("canvas"), ts=96/Math.max(W,H);
+  t.width=Math.round(W*ts); t.height=Math.round(H*ts); t.getContext("2d").drawImage(c,0,0,t.width,t.height);
+  lab.canvas=c; lab.label=label; lab.thumb=t.toDataURL("image/jpeg",0.7);
+  lab.f=analyse(c); lab.base=buildPatch(lab.f); lab.ratings={};
+  $("nametag").textContent=label;
+  $("auto").innerHTML="auto reads this as <b>"+lab.base.rootName+" "+lab.base.quality+"</b> · "+lab.base.mood+
+    " · warmth "+lab.base.affect.valence.toFixed(2)+" · energy "+lab.base.affect.arousal.toFixed(2);
+  renderVariants();
+  if(lab.playing) play(lab.playing,true);
+  status("");
+}
+function fromFile(f){
+  if(!f) return;
+  var img=new Image(), u=URL.createObjectURL(f);
+  img.onload=function(){ loadImage(img,(f.name||"photo").replace(/\.[^.]+$/,"").slice(0,28)); URL.revokeObjectURL(u); };
+  img.onerror=function(){ status("Couldn't read that image.",true); URL.revokeObjectURL(u); };
+  img.src=u;
+}
+["shoot","pick"].forEach(function(id){
+  $(id).addEventListener("change",function(e){ fromFile(e.target.files[0]); e.target.value=""; });
+});
+
+/* ---------------- variants ---------------- */
+function renderVariants(){
+  var box=$("variants"); box.innerHTML="";
+  VARIANTS.forEach(function(v){
+    var p=variantPatch(lab.base,v);
+    var row=document.createElement("div"); row.className="var"+(lab.playing===v.id?" on":""); row.dataset.id=v.id;
+    var pl=document.createElement("button"); pl.className="play";
+    pl.innerHTML="<b>"+v.name+" <em>"+p.rootName+" "+p.quality+"</em></b><span>"+v.blurb+"</span>";
+    pl.addEventListener("click",function(){ lab.playing===v.id ? stop() : play(v.id); });
+    var rt=document.createElement("div"); rt.className="rate";
+    [["-1","👎","Wrong"],["0","😐","Could work"],["1","👍","Fits"]].forEach(function(r){
+      var b=document.createElement("button"); b.dataset.r=r[0]; b.textContent=r[1];
+      b.setAttribute("aria-label",r[2]+" — "+v.name);
+      b.setAttribute("aria-pressed",String(lab.ratings[v.id]===+r[0]));
+      b.addEventListener("click",function(){
+        lab.ratings[v.id] = lab.ratings[v.id]===+r[0] ? undefined : +r[0];
+        if(lab.ratings[v.id]===undefined) delete lab.ratings[v.id];
+        renderVariants();
+      });
+      rt.appendChild(b);
+    });
+    row.appendChild(pl); row.appendChild(rt); box.appendChild(row);
+  });
+}
+function play(id,quiet){
+  var G=live(); G.ctx.resume();
+  var v=VARIANTS.filter(function(x){return x.id===id;})[0];
+  var was=!!lab.playing;
+  lab.playing=id;
+  applyTo(G,variantPatch(lab.base,v), was?0.6:0.05);
+  G.out.gain.setTargetAtTime(master,G.ctx.currentTime, was?0.05:0.7);
+  $("stop").disabled=false;
+  if(!quiet) renderVariants();
+}
+function stop(){
+  if(A) A.out.gain.setTargetAtTime(0,A.ctx.currentTime,0.35);
+  lab.playing=null; $("stop").disabled=true; renderVariants();
+}
+$("stop").addEventListener("click",stop);
+
+/* ---------------- storage ----------------
+   The artifact's own database when there is one, so every rating is kept
+   and can be read back for fitting; localStorage when the page runs
+   anywhere else. */
+var DB=null, COL="ratings", LS="imagemusic.lab.v1", records=[];
+function localList(){ try{ return JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ return []; } }
+function localPut(list){ try{ localStorage.setItem(LS,JSON.stringify(list.slice(0,400))); }catch(e){} }
+function renderList(list){
+  records=list;
+  $("count").textContent=list.length? list.length+" rated" : "";
+  var box=$("list");
+  if(!list.length){ box.innerHTML='<p class="empty">Nothing saved yet.</p>'; return; }
+  box.innerHTML="";
+  var NAMES={}; VARIANTS.forEach(function(v){ NAMES[v.id]=v.name; });
+  list.forEach(function(r){
+    var row=document.createElement("div"); row.className="rec";
+    var img=new Image(); img.src=r.thumb||""; img.alt=r.label||"";
+    var mid=document.createElement("div");
+    var liked=Object.keys(r.ratings||{}).filter(function(k){return r.ratings[k]===1;}).map(function(k){return NAMES[k]||k;});
+    var t=document.createElement("span"); t.className="t";
+    t.textContent= liked.length ? liked.join(" · ") : "nothing fitted";
+    var s=document.createElement("span"); s.className="s";
+    s.textContent=(r.label||"photo")+" · auto: "+(r.auto?r.auto.mood:"?");
+    mid.appendChild(t); mid.appendChild(s);
+    if(r.note){ var n=document.createElement("span"); n.className="n"; n.textContent="“"+r.note+"”"; mid.appendChild(n); }
+    var del=document.createElement("button"); del.className="del"; del.textContent="×";
+    del.setAttribute("aria-label","Delete this rating");
+    del.addEventListener("click",function(){ removeRecord(r.id); });
+    row.appendChild(img); row.appendChild(mid); row.appendChild(del); box.appendChild(row);
+  });
+}
+function initStore(){
+  var fallback=function(){ renderList(localList()); };
+  if(!(window.claude&&window.claude.use)){ fallback(); return; }
+  claude.use("db").then(function(db){
+    if(!db){ fallback(); return; }
+    DB=db;
+    db.collection(COL).orderBy("at","desc").limit(400).onSnapshot(function(snap){
+      renderList(snap.docs.map(function(d){ var o=JSON.parse(JSON.stringify(d.data())); o.id=d.id; return o; }));
+    },function(e){ status("Saved ratings unavailable ("+e.code+") — keeping them on this device.",true); DB=null; fallback(); });
+  }).catch(fallback);
+}
+function saveRecord(rec){
+  if(DB) return DB.collection(COL).doc(rec.id).set(rec);
+  var l=localList(); l.unshift(rec); localPut(l); renderList(l); return Promise.resolve();
+}
+function removeRecord(id){
+  if(DB){ DB.collection(COL).doc(id).delete().catch(function(e){ status("Couldn't delete: "+e.code,true); }); return; }
+  var l=localList().filter(function(r){return r.id!==id;}); localPut(l); renderList(l);
+}
+
+$("save").addEventListener("click",function(){
+  if(!lab.base){ status("Load a photo first.",true); return; }
+  if(!Object.keys(lab.ratings).length){ status("Rate at least one of the five first.",true); return; }
+  var ids=Object.keys(lab.ratings), best=null, top=-9;
+  ids.forEach(function(k){ if(lab.ratings[k]>top){ top=lab.ratings[k]; best=k; } else if(lab.ratings[k]===top){ best=null; } });
+  var rec={
+    id:"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    v:LAB_VERSION, at:Date.now(), label:lab.label, thumb:lab.thumb,
+    note:($("note").value||"").trim().slice(0,500),
+    ratings:lab.ratings, best:top===1?best:null,
+    auto:{ root:lab.base.rootName, quality:lab.base.quality, mood:lab.base.mood,
+           valence:+lab.base.affect.valence.toFixed(3), arousal:+lab.base.affect.arousal.toFixed(3) },
+    features:lab.f
+  };
+  $("save").disabled=true;
+  saveRecord(rec).then(function(){
+    status("Saved. Next photo?");
+    lab.ratings={}; $("note").value=""; renderVariants();
+  }).catch(function(e){
+    status(e&&e.code==="quota_exceeded" ? "Storage is full — export and clear some ratings." : "Couldn't save: "+((e&&(e.code||e.message))||e),true);
+  }).then(function(){ $("save").disabled=false; });
+});
+
+$("export").addEventListener("click",function(){
+  if(!records.length){ status("Nothing to export yet.",true); return; }
+  var data=JSON.stringify({ version:LAB_VERSION, variants:VARIANTS, exported:new Date().toISOString(),
+    records:records.map(function(r){ var o=JSON.parse(JSON.stringify(r)); delete o.thumb; return o; }) },null,1);
+  var name="pad-training-set-"+records.length+".json";
+  var host=(window.claude&&window.claude.use)?claude.use("downloads"):Promise.resolve(null);
+  host.then(function(dl){
+    if(dl&&dl.save) return dl.save({filename:name,data:data});
+    var a=document.createElement("a"), u=URL.createObjectURL(new Blob([data],{type:"application/json"}));
+    a.href=u; a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); },3000);
+  }).then(function(){ status("Exported "+records.length+" ratings."); })
+    .catch(function(e){ if(!(e&&e.code==="declined")) status("Export failed: "+((e&&(e.code||e.message))||e),true); });
+});
+
+/* ---------------- start ---------------- */
+initStore();
+(function(){
+  /* the private build embeds a sample photo; the public one starts from a
+     drawn scene rather than publishing anyone's picture */
+  if(typeof SAMPLE!=="undefined"){
+    var img=new Image();
+    img.onload=function(){ loadImage(img,SAMPLE_LABEL); };
+    img.src=SAMPLE;
+  } else {
+    var c=document.createElement("canvas"); c.width=720; c.height=420;
+    SCENES[0].draw(c.getContext("2d"),720,420); loadImage(c,SCENES[0].n);
+  }
+})();
+
+})();
+</script>
+
+</body>
+</html>

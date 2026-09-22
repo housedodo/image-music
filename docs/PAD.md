@@ -549,3 +549,60 @@ cat in a red bowl      ember / ember / dusk   warm room, violet highlight
 Across the corpus only 4 of 6 families appear as the *overall* label — photographs cluster
 in warm hues, so `ember` takes 10 of 19 — but all 6 appear at band level, which is where
 they actually sound.
+
+# Tuning by ear: the lab
+
+Every fix so far came from a listening complaint turned into a measurement. That runs out:
+"bright but sounds dark" and "the highs take over" are judgements about *this* picture, and
+the only ground truth is a person listening. `lab.html` (source `web/lab.body.html`, built by
+`tools/build.py`) collects that ground truth.
+
+Load a photo and the lab plays it five ways. All five keep the image's root and every
+effect setting, and each changes only one thing:
+
+| setting | chord | top layer | shimmer / tail | what it tests |
+|---|---|---|---|---|
+| As mapped | whatever the app picks | as mapped | as mapped | the baseline |
+| Pure | root + fifths | 55 % level, cut 2.6 kHz | 0.5× / 1× | does removing the third fix "dark"? |
+| Warm | add9 | 65 %, 3 kHz | 0.7× / 1× | major without a leading tone |
+| Airy | 6/9 | 70 %, 2.8 kHz | 1.4× / 1.5× | bright and open, with more space |
+| Deep | minor | 55 %, 2.2 kHz | 0.4× / 1.2× | is the picture actually minor? |
+
+Every alternative also softens the harmonic recipe (`soft`, 0.55–0.8, which damps the
+upper partials of the oscillator wave), drops the second-colour tone, and keeps the top
+layer at least 3 semitones clear of the middle one. Rate each setting 👍 fits / 😐 could work / 👎 wrong, add a note, save. A record
+stores the ratings, the favourite (the single top-rated setting, if there is one), what the app
+picked, and all the image features. That is enough to refit the mapping later without
+the photo. Export writes the whole set as JSON with the thumbnails stripped.
+
+The Pages build keeps records in `localStorage` on that device. The claude.ai copy keeps
+them in the artifact's database, so they can be read back directly for fitting.
+
+## Why "the highs take over": A-weighting
+
+The earlier mix checks measured raw energy and found it bass-heavy. The ear does not hear
+raw energy. Weighted with the A-curve (roughly −20 dB at 100 Hz, +1 dB at 2–4 kHz), the
+Malta cliff patch has a *perceived* centroid of about 1 kHz with only 13 % of the heard
+energy below 300 Hz. The three top voices at 330–620 Hz plus shimmer sit where hearing is
+most sensitive. The softer alternatives land at 630–980 Hz. Measure perceived balance with
+A-weighting from now on (`labtest.cjs` pattern in the calibration notes).
+
+## Two more dissonance sources, and a remaining one
+
+- **The second colour tone.** A strong second hue adds its own pitch class to the top.
+  On the cliff that was E♭ over a C♯-minor chord: a whole tone from the root and a
+  semitone from the E. It is now dropped if it falls a semitone, a major seventh, or a
+  tritone from any sounding pitch class.
+- **Chord qualities that are dissonant by design.** Of the 20 corpus photos, 6 still
+  contain a semitone, a major 7th or a tritone between pitch classes. They come from
+  *tense* (min♭9), *bright* (maj7♯11) and *wistful* (min9). "Bright" is the notable one:
+  a ♯11 over a major 7th reads as luminous to a jazz ear and as "off" to most people.
+  The lab ratings decide whether it goes. Changing it before then would be guessing.
+
+## Why a bright photo can still read dark
+
+Valence mixes lightness, saturation, warmth and entropy against the corpus median. A
+white cliff under a pale sky is light, but it is also low in saturation, cool (sea and sky
+blue outweigh the stone), and busy (rock texture). Three of the four push toward minor, and
+the result is C♯ min7, *moody*. That is correct for the rule. Whether the rule is right is
+exactly what the lab's *Pure / Warm / Airy* ratings will show.

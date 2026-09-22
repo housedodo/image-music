@@ -52,6 +52,26 @@ doc = f"""<!doctype html>
 """
 (root / "index.html").write_text(doc)
 
+# --- tuning lab (plain page, not part of the installed app) ---------------
+lab = (root / "web" / "lab.body.html").read_text()
+lsplit = lab.rindex("</style>") + len("</style>")
+(root / "lab.html").write_text(f"""<!doctype html>
+<html lang="en" data-build="{build}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="robots" content="noindex">
+<link rel="icon" href="icons/favicon-64.png" sizes="64x64">
+<style>*{{box-sizing:border-box;}} html,body{{margin:0;}} [hidden]{{display:none!important;}}</style>
+{lab[:lsplit]}
+</head>
+<body>
+{lab[lsplit:]}
+</body>
+</html>
+""")
+
 # --- PWA manifest ---------------------------------------------------------
 manifest = {
     "name": "Pad From Picture",

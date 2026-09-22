@@ -62,6 +62,7 @@ caches are deleted on activate.
 
 ```
 python3 tools/build.py      # web/pad.body.html  ->  index.html
+                            # web/lab.body.html  ->  lab.html (tuning lab)
 ```
 
 `web/pad.body.html` is the page as the claude.ai artifact host wants it: a `<title>`, a

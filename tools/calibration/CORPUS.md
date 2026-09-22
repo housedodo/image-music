@@ -72,3 +72,22 @@ chord-plus-layer-count.
 - **Texture reads as energy.** A field of grass is high-arousal because it is high-detail;
   the highland cow coming out *joyful* follows from that rather than from anything joyful
   in the picture.
+
+## Re-fit on the app's own pixels
+
+Two things made the first fit subtly wrong:
+
+- **EXIF orientation.** Browsers honour the orientation tag; Pillow does not unless
+  `ImageOps.exif_transpose` is called. The Python harness analysed 15 of 19 phone photos
+  sideways, which moved every orientation-dependent feature (vertical spread, depth,
+  width). Only lightness, saturation and warmth were unaffected.
+- **Aliasing.** The app used to draw a 4000-pixel photo straight onto a 128-pixel canvas.
+  Most browsers sample rather than average in that case, so texture features (edge
+  density, grain, entropy) read noise. `px()` now halves the image in steps before the
+  final draw.
+
+The corpus was re-extracted through the app's own path in headless Chromium (stepped
+downscale, browser-decoded orientation), and every anchor was refit on that data. Affect
+anchors moved to valence mid 0.438 / k 11.1 and arousal mid 0.524 / k 7.6. All nine moods
+still appear across the 20 photos, but individual photos shifted. The Malta cliff went from
+*tense* min♭9 to *moody* min7.

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 19:21 UTC">
+<html lang="en" data-build="2026-09-22 19:40 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -411,8 +411,24 @@ var SCENES=[
 
 /* ================= analysis ================= */
 var MID=128;
-function px(src,w,h){ var c=document.createElement("canvas"); c.width=w;c.height=h;
-  var x=c.getContext("2d",{willReadFrequently:true}); x.drawImage(src,0,0,w,h); return x.getImageData(0,0,w,h); }
+/* Downscale by repeated halving before the final step. A single large
+   drawImage() shrink samples rather than averages, so fine texture aliases
+   and grain and edge density read higher on a high-resolution photo than on
+   a small one of the same scene. Halving averages 2x2 blocks each pass --
+   close to a true area average, and the same in every browser. */
+function px(src,w,h){
+  var sw=src.naturalWidth||src.videoWidth||src.width, sh=src.naturalHeight||src.videoHeight||src.height, cur=src;
+  while(sw/2>=w*2 && sh/2>=h*2){
+    var hw=Math.max(w,Math.floor(sw/2)), hh=Math.max(h,Math.floor(sh/2));
+    var t=document.createElement("canvas"); t.width=hw; t.height=hh;
+    var tx=t.getContext("2d"); tx.imageSmoothingEnabled=true; tx.imageSmoothingQuality="high";
+    tx.drawImage(cur,0,0,hw,hh); cur=t; sw=hw; sh=hh;
+  }
+  var c=document.createElement("canvas"); c.width=w;c.height=h;
+  var x=c.getContext("2d",{willReadFrequently:true});
+  x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high";
+  x.drawImage(cur,0,0,w,h); return x.getImageData(0,0,w,h);
+}
 function hsv(r,g,b){ r/=255;g/=255;b/=255; var mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,h=0;
   if(d){ if(mx===r)h=((g-b)/d+6)%6; else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4; h/=6; }
   return [h, mx?d/mx:0, mx]; }
@@ -655,10 +671,10 @@ function bands(d,W,H){
    centred on the everyday median; it stretches the crowded middle and never
    fully saturates, so extremes still separate. */
 var CAL={
-          light:[0.529,8.4], sat:[0.344,10.4], contrast:[0.398,14.3],
-          density:[0.350,9.6], entropy:[0.354,12.1], sharp:[0.452,5.6],
-          vspread:[0.273,9.0], width:[0.451,4.1], warmth:[0.773,4.8],
-          grain:[0.142,13.7], depth:[0.059,18.5], dominance:[0.770,7.6]
+          light:[0.514,8.7], sat:[0.372,11.3], contrast:[0.447,14.4],
+          density:[0.351,9.8], entropy:[0.352,13.3], sharp:[0.376,6.9],
+          vspread:[0.491,6.8], width:[0.231,3.8], warmth:[0.750,4.8],
+          grain:[0.105,20.0], depth:[0.118,13.7], dominance:[0.760,7.5]
         };
 function sig(v,mid,k){ return 1/(1+Math.exp(-k*(v-mid))); }
 function calib(f){
@@ -716,9 +732,10 @@ function timbreFor(hue){
    growls; a warm picture is damped further, which is what used to be done
    crudely by banning sawtooth. */
 var ROLE_HARM={bass:0.34, mid:0.78, top:1.0};
-function waveFor(G,idx,role,valence){
-  var damp=ROLE_HARM[role]*(1.10-valence*0.30);
-  var key=idx+"|"+role+"|"+Math.round(valence*10);
+function waveFor(G,idx,role,valence,soft){
+  soft=soft||1;                           /* <1 rolls the upper harmonics off harder */
+  var damp=ROLE_HARM[role]*(1.10-valence*0.30)*soft;
+  var key=idx+"|"+role+"|"+Math.round(valence*10)+"|"+Math.round(soft*20);
   if(G.waves[key]) return G.waves[key];
   var h=TIMBRES[idx].h, real=new Float32Array(h.length+1), imag=new Float32Array(h.length+1);
   for(var k=0;k<h.length;k++) imag[k+1]=h[k]*Math.pow(damp,k);
@@ -771,10 +788,11 @@ function affect(c){
   /* Centred and scaled on real photographs rather than synthetic test scenes:
      their measured spread is narrow (0.19 on both axes), so a gentle curve
      leaves every picture in the middle band and the grid never gets used. */
-  /* Centre and slope fitted to a corpus of eighteen real photographs: the
+  /* Centre and slope fitted to a corpus of real photographs (arousal re-centred
+     after the corpus was re-decoded with EXIF orientation applied): the
      median lands mid-grid and the 10th-90th percentiles span roughly
      0.15-0.85, so all nine cells are reachable. */
-  return { valence:sig(val,0.428,12.4), arousal:sig(aro,0.520,7.8) };
+  return { valence:sig(val,0.438,11.1), arousal:sig(aro,0.524,7.6) };
 }
 function band(v){ return v>0.63?2:v<0.37?0:1; }
 function qualityOf(c){
@@ -843,15 +861,21 @@ function buildPatch(f){
     var second=null;
     if(role==="top" && notes.length<SLOTS && f.hue2Share>0.16 && !br.grey){
       var pc2=(br.pc+snap(FIFTHS[Math.round(f.hue2*12)%12],br.pc,q.sc,true))%12;
-      var m2=base+pc2, tries=0;
+      /* in the scale is not enough: a scale tone can still sit a semitone or a
+         tritone from a note already sounding (an E-flat over an E), so such a
+         colour tone is dropped rather than added */
+      var clashes=false, uk;
+      for(uk in used){ var dd=((pc2-(+uk%12))%12+12)%12; if(dd===1||dd===11||dd===6){ clashes=true; break; } }
+      if(clashes) pc2=-1;
+      var m2=pc2<0?-1:base+pc2, tries=0;
       /* the added colour needs the same clearance as the layer it joins */
-      while(tries<3){
+      while(pc2>=0 && tries<3){
         var clash=false,u2;
         for(u2 in used) if(Math.abs(+u2-m2)<3){ clash=true; break; }
         if(!clash) break;
         m2+=12; tries++;
       }
-      if(tries<3 && !used[m2]){ used[m2]=1; second=m2; notes.push(m2); }
+      if(pc2>=0 && tries<3 && !used[m2]){ used[m2]=1; second=m2; notes.push(m2); }
     }
 
     layers.push({
@@ -1112,7 +1136,7 @@ function applyTo(G,p,glide){
       for(s=0;s<SLOTS;s++){
         var slot=lay.slots[s], has=s<src.notes.length;
         var f=hz((has?src.notes[s]:src.notes[0])+tr);
-        var pw=waveFor(G,src.timbre,src.role,p.affect?p.affect.valence:0.5);
+        var pw=waveFor(G,src.timbre,src.role,p.affect?p.affect.valence:0.5,p.soft);
         for(o=0;o<2;o++){
           set(slot.oscs[o].frequency,f);
           set(slot.oscs[o].detune,(o?1:-1)*src.detune);
