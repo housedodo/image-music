@@ -278,3 +278,71 @@ What would fix it: 15–30 real photographs spanning bright/dark, vivid/muted, b
 warm/cool. Run them through `tools/calibration/photos.mjs`, take the median of each raw
 feature, and set that as its anchor. Until then the synthetic scenes cluster on `maj9`, and
 that clustering should be read as a fault in the test set rather than in the mapping.
+
+
+---
+
+# Voicing
+
+Everything sounded tense regardless of the chord name, and the cause was in the notes, not
+the naming. Three faults, all visible in the note lists:
+
+**1. Tensions in the bass.** Every layer played the same interval stack from its own base,
+so a "serene" maj9 came out `C2 G2 B2 D3` — a major seventh and a ninth in the bass octave,
+three semitones apart. Sevenths and ninths beat badly below C3.
+
+**2. Duplicate pitches.** Layers independently landed on the same note — MIDI 55 and 55,
+67 and 67 — each with its own detune. Two detuned copies of one pitch is maximum beating,
+and that is what read as *looming*.
+
+**3. Detune up to 17.4 cents** on sawtooth oscillators, in the low register.
+
+## Chords by register role
+
+A chord is no longer one interval stack. It is three:
+
+| role | base | contents |
+|---|---|---|
+| `bass` | MIDI 36 | root and fifth, **always** — nothing else, ever |
+| `mid` | MIDI 48 | the triad |
+| `top` | MIDI 60 | the colour tones — 9ths, 6ths, ♯11s, where they read as air |
+
+The picture's shadows play `bass`, midtones `mid`, highlights `top`. **All layers share one
+root.** Previously each band transposed its own full stack by its own hue, which made the
+whole thing polychordal — a large part of the dissonance.
+
+Two spacing rules run at build time: no pitch is used twice, and the `top` layer (and any
+added second-colour tone) is lifted by octaves until it clears the highest note below it by
+at least 3 semitones.
+
+Detune is scaled by register — `bass ×0.30, mid ×0.65, top ×1.0` — and its range cut, so
+the maximum across the corpus is **9.0 cents, down from 17.4**. Resonance is capped at
+`0.5 + contrast×1.7` (was ×7). A 48 Hz highpass sits before the compressor.
+
+## Warm pictures get softer treatment
+
+Beyond the chord, valence above 0.60 now changes the sound itself:
+
+- **no sawtooth at all** — a saw through a resonant lowpass reads as tense whatever the
+  notes are, so warm pictures use sine and triangle
+- **the airy noise bed is scaled by `1.25 − valence×0.75`**, so a serene picture gets a
+  fraction of the breath a tense one does
+
+## Result over the corpus
+
+| | before | after |
+|---|---|---|
+| duplicate pitches | present | **0 / 18** |
+| rough low intervals | 6 / 18 | **0 / 18** |
+| max detune | 17.4c | **9.0c** |
+
+Sample voicings at the warm end:
+
+```
+cat in a red bowl   C maj9    serene   C2 G2 | C3 E3    | D4 E4 G4
+cat in a box        G add9    warm     G2 D3 | G3 B3 D4 | A4 B4 D5
+fish and chips      G 6/9     joyful   G2 D3 | G3 B3 E4 | A4 B4
+```
+
+`tools/calibration/voicing.mjs` checks the whole corpus for duplicate pitches, rough low
+intervals and detune extremes.

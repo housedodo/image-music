@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-22 11:56 UTC">
+<html lang="en" data-build="2026-09-22 12:05 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -580,23 +580,30 @@ function calib(f){
 /* ================= harmony ================= */
 var FIFTHS=[0,7,2,9,4,11,6,1,8,3,10,5];
 var PRETTY=["C","C♯","D","E♭","E","F","F♯","G","A♭","A","B♭","B"];
+/* Each chord is defined by REGISTER ROLE, not as one interval stack repeated
+   at every height. Sevenths and ninths beat badly below C3, so the bass role
+   only ever carries root and fifth; the triad lives in the middle; the colour
+   tones (9ths, 6ths, #11s) sit up top where they read as air, not mud. */
 var Q={
-  maj9:    {n:"maj9",    f:"maj9",    iv:[0,7,11,14,16,21],sc:[0,2,4,5,7,9,11]},
-  add9:    {n:"add9",    f:"add9",    iv:[0,7,12,14,16,19],sc:[0,2,4,5,7,9,11]},
-  maj69:   {n:"6/9",     f:"maj69",   iv:[0,7,9,14,16,21], sc:[0,2,4,5,7,9,11]},
-  sus2:    {n:"sus2",    f:"sus2",    iv:[0,7,12,14,19,24],sc:[0,2,5,7,9,10]},
-  quartal: {n:"quartal", f:"quartal", iv:[0,5,10,15,17,22],sc:[0,2,5,7,10]},
-  lydian:  {n:"maj7♯11", f:"maj7s11", iv:[0,7,11,16,18,23],sc:[0,2,4,6,7,9,11]},
-  min9:    {n:"min9",    f:"min9",    iv:[0,7,10,14,15,19],sc:[0,2,3,5,7,9,10]},
-  min7:    {n:"min7",    f:"min7",    iv:[0,7,10,12,15,19],sc:[0,2,3,5,7,8,10]},
-  minb9:   {n:"min♭9",   f:"minb9",   iv:[0,7,10,13,15,20],sc:[0,1,3,5,7,8,10]}
+  maj9:    {n:"maj9",    f:"maj9",    mid:[0,4,7], top:[2,4,7,11], sc:[0,2,4,5,7,9,11]},
+  add9:    {n:"add9",    f:"add9",    mid:[0,4,7], top:[2,4,7],    sc:[0,2,4,5,7,9,11]},
+  maj69:   {n:"6/9",     f:"maj69",   mid:[0,4,9], top:[2,4,9],    sc:[0,2,4,5,7,9,11]},
+  sus2:    {n:"sus2",    f:"sus2",    mid:[0,7,14],top:[2,7,9],    sc:[0,2,5,7,9,10]},
+  quartal: {n:"quartal", f:"quartal", mid:[0,5,10],top:[0,5,10],   sc:[0,2,5,7,10]},
+  lydian:  {n:"maj7\u266F11", f:"maj7s11", mid:[0,4,7], top:[2,6,11], sc:[0,2,4,6,7,9,11]},
+  min9:    {n:"min9",    f:"min9",    mid:[0,3,7], top:[2,3,7],    sc:[0,2,3,5,7,9,10]},
+  min7:    {n:"min7",    f:"min7",    mid:[0,3,7], top:[3,7,10],   sc:[0,2,3,5,7,8,10]},
+  minb9:   {n:"min\u266D9", f:"minb9", mid:[0,3,7], top:[1,3,8],  sc:[0,1,3,5,7,8,10]}
 };
+var BASS=[0,7];                                 /* root and fifth only, always */
+var ROLE_BASE={bass:36, mid:48, top:60};
+var ROLE_DETUNE={bass:0.30, mid:0.65, top:1.0};
+
 /* The affect grid: warmth of feeling across, energy down. A single
    bright-to-dark ladder put the median photograph in its minor half and, with
-   a steep curve, never landed in the middle at all -- measured over fifteen
-   images it produced 8 majors, 7 minors and zero neutrals. Two axes give nine
-   outcomes and, more importantly, let saturation carry feeling: a vivid
-   picture is not automatically a sad one. */
+   a steep curve, never landed in the middle at all. Two axes give nine
+   outcomes and let saturation carry feeling: a vivid picture is not
+   automatically a sad one. */
 var MOODS=[
   ["serene","warm","joyful"],
   ["open","suspended","bright"],
@@ -608,7 +615,6 @@ var GRID=[
   /* neutral*/ [Q.sus2,    Q.quartal,   Q.lydian],
   /* cool   */ [Q.min9,    Q.min7,      Q.minb9 ]
 ];
-var QUALITIES=[Q.lydian,Q.maj9,Q.add9,Q.sus2,Q.min9,Q.min7,Q.minb9];   /* legacy order */
 function rootOf(f){
   /* One colourful object should pick the key instead of being averaged into
      the wall behind it. Near-grey frames have no dominant hue worth trusting,
@@ -663,57 +669,86 @@ function buildPatch(f){
   var bs=(f.bands||[]).filter(function(b){ return b; });
   if(!bs.length) bs=[{band:1,coverage:1,hue:f.hueDom,dominance:f.dominance,sat:f.sat,
                       light:f.light,contrast:f.contrast,warmth:f.warmth}];
-  var layers=[], i, nL=bs.length;
+  var nL=bs.length;
+  /* Which register each band plays. Every layer shares ONE root: layers used to
+     carry their own transposed stack, which made the whole thing polychordal
+     and is most of why it sounded tense. */
+  var ROLES = nL===1 ? ["mid"] : nL===2 ? ["bass","top"] : ["bass","mid","top"];
+  var layers=[], used={}, i;
+
   for(i=0;i<nL;i++){
-    var bd=bs[i], bc=calib(bd);
-    /* each band's own colour, snapped into the key the whole picture set */
-    var grey = bd.dominance<0.22 || bd.sat<0.07;
-    var pc = i===0 ? br.pc
-      : (br.pc+snap(FIFTHS[Math.round((grey?f.hueDom:bd.hue)*12)%12],br.pc,q.sc))%12;
+    var bd=bs[i], bc=calib(bd), role=ROLES[i];
     var dom=bc.dominance;
-    var base_v = bc.sat<.30?2 : bc.sat<.60?3 : 4;
-    var voices=Math.max(2,Math.min(4, base_v + (dom>0.62?-1:dom<0.34?1:0) ));
-    /* energy lifts the whole stack and opens the filter: a busy, vivid picture
-       sits higher and brighter than a still one of the same colour */
-    var octave = 2 + i + Math.round(bc.light*0.5 + af.arousal*0.5);
-    var notes=[], k;
-    for(k=0;k<voices;k++) notes.push(12*(octave+1)+pc+q.iv[k]);
-    /* a genuine second colour in the whole frame adds its own tone up top */
-    var second=null;
-    if(i===nL-1 && f.hue2Share>0.16 && !br.grey){
-      var pc2=(br.pc+snap(FIFTHS[Math.round(f.hue2*12)%12],br.pc,q.sc,true))%12;
-      if(pc2!==pc){ second=12*(octave+2)+pc2; notes.push(second); }
+    var set = role==="bass" ? BASS : q[role];
+    /* saturation decides how much of the role's set sounds */
+    var want = role==="bass" ? 2 : (bc.sat<.30?2 : bc.sat<.62?3 : 4);
+    want = Math.max(2, Math.min(set.length, want + (dom>0.62?-1:dom<0.34?1:0)));
+
+    var base=ROLE_BASE[role];
+    /* lift the top voice clear of whatever the middle one ended on: a whole
+       tone straddling two layers beats as badly as one inside a chord */
+    if(role==="top"){
+      var highest=0,u;
+      for(u in used) if(+u>highest) highest=+u;
+      var lowest=base+br.pc+Math.min.apply(null,set);
+      while(highest && lowest-highest<3){ base+=12; lowest+=12; }
     }
+    var notes=[], k;
+    for(k=0;k<want;k++){
+      var m=base+br.pc+set[k];
+      if(used[m]) continue;          /* never two layers on the same pitch */
+      used[m]=1; notes.push(m);
+    }
+    if(!notes.length){ notes.push(base+br.pc+set[0]+12); }
+
+    /* a genuine second colour joins the top voice, never the bass */
+    var second=null;
+    if(role==="top" && f.hue2Share>0.16 && !br.grey){
+      var pc2=(br.pc+snap(FIFTHS[Math.round(f.hue2*12)%12],br.pc,q.sc,true))%12;
+      var m2=base+pc2, tries=0;
+      /* the added colour needs the same clearance as the layer it joins */
+      while(tries<3){
+        var clash=false,u2;
+        for(u2 in used) if(Math.abs(+u2-m2)<3){ clash=true; break; }
+        if(!clash) break;
+        m2+=12; tries++;
+      }
+      if(tries<3 && !used[m2]){ used[m2]=1; second=m2; notes.push(m2); }
+    }
+
     layers.push({
-      pc:pc, notes:notes, voices:notes.length, octave:octave, second:second,
-      coverage:bd.coverage,
-      detune:(2+c.entropy*16)*(1.3-dom*0.55),
+      pc:br.pc, notes:notes, voices:notes.length, octave:Math.floor(base/12)-1, second:second,
+      coverage:bd.coverage, role:role,
+      /* detune scales with register: beating that is pleasant up top is mud
+         at the bottom, so the bass barely moves */
+      detune:(1.5+c.entropy*7)*(1.3-dom*0.55)*ROLE_DETUNE[role],
       cutoff:300*Math.pow(23,Math.pow(bc.light,1.15))*(0.72+af.arousal*0.75),
-      q:0.6+bc.contrast*7,
+      q:0.5+bc.contrast*1.7,
       lfoRate:(0.025+c.density*0.22)*(1+i*0.22)*(0.65+af.arousal*0.9),
       lfoDepth:0.25+bc.contrast*0.65,
       pan:(nL===1?0:(i/(nL-1)*2-1)*(0.25+c.width*0.5)),
-      /* how much of the frame this band covers sets how loud its layer is */
-      gain:0.45+Math.min(0.55,bd.coverage*1.3),
-      /* waveform follows energy, not colour temperature: real photographs are
-         rarely warm enough to ever reach a sawtooth otherwise */
-      wave: (af.arousal*0.6+bc.warmth*0.4)>.60?"sawtooth":
-            (af.arousal*0.6+bc.warmth*0.4)>.36?"triangle":"sine",
-      grey:grey, dom:dom, band:bd.band, c:bc, f:bd
+      gain:(role==="bass"?0.95:role==="mid"?0.85:0.62)*(0.55+Math.min(0.45,bd.coverage*1.1)),
+      /* No sawtooth in the bass -- its harmonics are what make a low chord
+         growl. And none in a warm picture either: a saw through a resonant
+         lowpass is most of what reads as "tense" regardless of the notes. */
+      wave: role==="bass" ? "sine"
+          : af.valence>0.60 ? (af.arousal>0.70?"triangle":"sine")
+          : role==="mid"  ? (af.arousal>0.66?"sawtooth":"triangle")
+          : (af.arousal>0.45?"sawtooth":"triangle"),
+      grey:bd.dominance<0.22, dom:dom, band:bd.band, c:bc, f:bd
     });
   }
+
   var fx={
-    /* a repeating pattern in the picture becomes a repeating echo */
     delayTime: 0.09+f.period*1.55,
     delayFeedback: clamp((f.periodStrength-0.42)*1.15),
     delayMix: clamp((f.periodStrength-0.42)*0.95),
-    /* fine colour noise -> ensemble movement */
     chorusDepth: 0.0012+c.grain*0.006,
     chorusRate: 0.15+c.grain*0.75,
-    /* a strong top-to-bottom gradient reads as depth -> the room gets bigger */
     preDelay: 0.005+c.depth*0.085,
     wet: clamp(0.18+(1-c.sharp)*0.62),
-    air: Math.pow(c.entropy,1.6)*0.9
+    /* the airy noise bed reads as unease, so a warm picture gets far less */
+    air: Math.pow(c.entropy,1.6)*0.9*(1.25-af.valence*0.75)
   };
   return { rootName:PRETTY[br.pc], root:br.pc, quality:q.n, qfile:q.f, scale:q.sc,
     layers:layers, fx:fx, c:c, f:f, grey:br.grey, affect:af, mood:qq.mood };
@@ -738,7 +773,9 @@ function impulse(ctx,sec,decay){
 function graph(ctx){
   var out=ctx.createGain(); out.gain.value=0;
   var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-17; comp.ratio.value=5;
-  out.connect(comp); comp.connect(ctx.destination);
+  /* clears sub-bass rumble that the low layer's detuning otherwise stirs up */
+  var hp=ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=48; hp.Q.value=0.7;
+  out.connect(hp); hp.connect(comp); comp.connect(ctx.destination);
 
   var bus=ctx.createGain(); bus.gain.value=1;
 
