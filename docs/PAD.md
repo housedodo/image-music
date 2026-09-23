@@ -772,3 +772,17 @@ between them. Two causes, both fixed:
 Both rides are now Titan (0.71 and 0.78, next is Drift at 0.40). The Alpine road photo in
 the corpus moved from Aurora to Titan too. Aurora now needs actual snow or a pale, colourless
 sky.
+
+## Fix: a northern-lights photo was playing Ember
+
+Night snow under an aurora scored Ember 0.62, Dust 0.56, Aurora 0.02:
+- The image model called the scene "spotlight" (0.15), and spotlight counted as **fire**.
+  It is removed from the fire labels.
+- **Moonlit snow** is grey-blue and dimmer than the snow check allowed (L>0.72, sat<0.13).
+  A second snow measure now counts pale, low-colour ground in the lower frame (L>0.42,
+  sat<0.24).
+- New cue **skyglow**: green-cyan, saturated light across a dark sky (the northern lights).
+  It counts 1.4 toward Aurora.
+
+The photo now plays Aurora (0.93, then Dust 0.56). The 21-photo corpus and the two alpine
+rides keep their worlds.

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-23 08:16 UTC">
+<html lang="en" data-build="2026-09-23 08:23 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -367,7 +367,7 @@ function analysePixels(d,W,H){
      skin, sky at the top, water at the bottom, foliage, snow, city lights in
      the dark, a warm glow. They steer which sound world plays; an on-device
      image model, where one loads, refines them. */
-  var cGlint=0,cSkin=0,cSky=0,cSkyN=0,cWater=0,cWaterN=0,cLeaf=0,cSnow=0,cBright=0,cGlow=0,cDark=0,cW=0;
+  var cGlint=0,cSnowLo=0,cLoN=0,cGlowSky=0,cTopN=0,cTopL=0,cSkin=0,cSky=0,cSkyN=0,cWater=0,cWaterN=0,cLeaf=0,cSnow=0,cBright=0,cGlow=0,cDark=0,cW=0;
   var strips=[0,1,2,3].map(function(){ return {l:0,x:0,y:0,s:0,n:0}; });
   var scan=new Float32Array(16), scanN=new Float32Array(16), glints=[];
   for(i=0;i<n;i++){
@@ -384,6 +384,10 @@ function analysePixels(d,W,H){
     if(yy4>0.55){ cWaterN++; if(hv4[0]>0.42&&hv4[0]<0.68 && hv4[1]>0.15 && L4>0.12) cWater++; }
     if(hv4[0]>0.16&&hv4[0]<0.45 && hv4[1]>0.22 && L4>0.08) cLeaf++;
     if(L4>0.72 && hv4[1]<0.13) cSnow++;
+    /* snow by moonlight is grey-blue and dimmer: pale, low-colour ground */
+    if(yy4>0.45){ cLoN++; if(L4>0.42 && hv4[1]<0.24) cSnowLo++; }
+    /* a green-cyan glow across a dark sky: the northern lights */
+    if(yy4<0.6){ cTopN++; cTopL+=L4; if(hv4[0]>0.24&&hv4[0]<0.55 && hv4[1]>0.3 && L4>0.18) cGlowSky++; }
     if(L4<0.22) cDark++;
     if(L4>0.72) cBright++;
     if(L4>0.55 && hv4[1]>0.45 && (hv4[0]<0.13||hv4[0]>0.95)) cGlow++;
@@ -401,7 +405,8 @@ function analysePixels(d,W,H){
     sky: cSkyN?clamp(cSky/cSkyN*1.4):0,
     water: cWaterN?clamp(cWater/cWaterN*1.3):0,
     foliage: clamp(cLeaf/n*1.6),
-    snow: clamp(cSnow/n*2.2),
+    snow: Math.max(clamp(cSnow/n*2.2), cLoN?clamp((cSnowLo/cLoN-0.25)*1.6):0),
+    skyglow: cTopN&&cTopL/cTopN<0.35 ? clamp(cGlowSky/cTopN*6) : 0,
     /* bright points in a mostly dark frame: street lights, windows, stars */
     lights: darkFrac>0.35 ? clamp(cBright/n*9)*clamp((darkFrac-0.35)*3) : 0,
     glow: clamp(cGlow/n*5)*clamp(darkFrac*2.5),
@@ -1188,7 +1193,7 @@ function worldScores(f,c,af,tags){
     dust:   0.06+0.55*(1-c.sat)*(1-c.contrast)*(1-dark)+0.20*c.grain*(1-c.sat),
     abyss:  0.02+0.95*dark*(1-g("glow"))*(1-g("lights"))*(1-0.5*T("face"))*(1.2-0.8*f.warmth),
     ember:  0.02+1.30*g("glow")+0.60*dark*f.warmth+0.60*T("fire")+0.20*T("food")+0.15*T("cat")*f.warmth,
-    aurora: 0.02+0.70*g("snow")*(1-f.warmth)+0.35*g("sky")*f.light*(1-c.sat)+0.60*T("winter")*clamp(g("snow")*4)
+    aurora: 0.02+1.40*g("skyglow")+0.70*g("snow")*(1-f.warmth)+0.35*g("sky")*f.light*(1-c.sat)+0.60*T("winter")*clamp(g("snow")*4)
   };
 
 }
@@ -1595,7 +1600,7 @@ var TAG_RULES=[
   ["water", /seashore|lakeside|sandbar|promontory|coral reef|boathouse|dock|pier|breakwater|liner|speedboat|canoe|paddle|yawl|catamaran|schooner|trimaran|fountain|geyser|wreck|submarine|scuba|snorkel|aquarium|fireboat|gondola|lifeboat/],
   ["vast",  /\balp\b|volcano|valley|cliff|mountain|dam\b|suspension bridge|viaduct|castle|monastery|palace|megalith|dome/],
   ["city",  /street sign|traffic light|streetcar|cab\b|trolleybus|minibus|limousine|police van|tram|passenger car|scoreboard|cinema|parking meter|marquee|shop|grocery|restaurant|library|monitor|screen|laptop|web site|neck brace|jersey|sweatshirt/],
-  ["fire",  /candle|torch|fire screen|stove|lampshade|matchstick|jack-o'-lantern|lighter|spotlight/],
+  ["fire",  /candle|torch|fire screen|stove|lampshade|matchstick|jack-o'-lantern|lighter/],
   ["food",  /plate|pizza|burrito|hotdog|cheeseburger|bagel|pretzel|carbonara|guacamole|consomme|trifle|ice cream|potpie|meat loaf|espresso|cup\b|mashed potato|french loaf|dough|bakery|menu|chocolate|pomegranate|banana|orange|lemon|strawberry|pineapple|fig\b|corn|mushroom|broccoli|cauliflower|zucchini|cucumber|squash|soup|wok|frying pan/],
   ["flora", /daisy|lady's slipper|pot\b|greenhouse|hay|rapeseed|buckeye|acorn|hip\b|vase|maze|garden|picket fence|lakeside|park bench|leaf|tree/],
   ["winter",/ski\b|snowmobile|snowplow|dogsled|shovel|mitten|igloo/]
