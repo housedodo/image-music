@@ -20,7 +20,7 @@ function scores(f,c,af,t){
     dust:   0.06+0.55*(1-c.sat)*(1-c.contrast)*(1-dark)+0.20*c.grain*(1-c.sat),
     abyss:  0.02+0.95*dark*(1-g('glow'))*(1-g('lights'))*(1-0.5*T('face'))*(1.2-0.8*f.warmth),
     ember:  0.02+1.30*g('glow')+0.60*dark*f.warmth+0.60*T('fire')+0.20*T('food')+0.15*T('cat')*f.warmth,
-    aurora: 0.02+0.70*g('snow')*(1-f.warmth)+0.35*g('sky')*f.light*(1-c.sat)+0.60*T('winter')
+    aurora: 0.02+0.70*g('snow')*(1-f.warmth)+0.35*g('sky')*f.light*(1-c.sat)+0.60*T('winter')*clamp(g("snow")*4)
   };
 }
 const cnt={};

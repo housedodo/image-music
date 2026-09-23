@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-23 07:45 UTC">
+<html lang="en" data-build="2026-09-23 08:16 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1188,7 +1188,7 @@ function worldScores(f,c,af,tags){
     dust:   0.06+0.55*(1-c.sat)*(1-c.contrast)*(1-dark)+0.20*c.grain*(1-c.sat),
     abyss:  0.02+0.95*dark*(1-g("glow"))*(1-g("lights"))*(1-0.5*T("face"))*(1.2-0.8*f.warmth),
     ember:  0.02+1.30*g("glow")+0.60*dark*f.warmth+0.60*T("fire")+0.20*T("food")+0.15*T("cat")*f.warmth,
-    aurora: 0.02+0.70*g("snow")*(1-f.warmth)+0.35*g("sky")*f.light*(1-c.sat)+0.60*T("winter")
+    aurora: 0.02+0.70*g("snow")*(1-f.warmth)+0.35*g("sky")*f.light*(1-c.sat)+0.60*T("winter")*clamp(g("snow")*4)
   };
 
 }
@@ -1198,7 +1198,8 @@ function buildScene(f,tags,forceWorld){
   var p=buildPatch(f), seed=(f.fp>>>0)||((f.hueDom*1e6)|0)+1, r=rng(seed);
   p.tags=tags||{}; p.seed=seed;
   var sc=worldScores(f,p.c,p.affect,p.tags), best="drift", bs=-9, k;
-  for(k in sc){ var v=sc[k]+(r()-0.5)*0.14; if(v>bs){ bs=v; best=k; } }
+  /* the fingerprint only settles near-exact ties; a real lead always wins */
+  for(k in sc){ var v=sc[k]+(r()-0.5)*0.04; if(v>bs){ bs=v; best=k; } }
   p.scores=sc; p.world=forceWorld||best; p.autoWorld=best;
   p.minor=p.q.mid.indexOf(3)>=0;
   p.scaleId=pickWeighted(p.minor?SCALE_MIN:SCALE_MAJ,r);
@@ -1597,7 +1598,7 @@ var TAG_RULES=[
   ["fire",  /candle|torch|fire screen|stove|lampshade|matchstick|jack-o'-lantern|lighter|spotlight/],
   ["food",  /plate|pizza|burrito|hotdog|cheeseburger|bagel|pretzel|carbonara|guacamole|consomme|trifle|ice cream|potpie|meat loaf|espresso|cup\b|mashed potato|french loaf|dough|bakery|menu|chocolate|pomegranate|banana|orange|lemon|strawberry|pineapple|fig\b|corn|mushroom|broccoli|cauliflower|zucchini|cucumber|squash|soup|wok|frying pan/],
   ["flora", /daisy|lady's slipper|pot\b|greenhouse|hay|rapeseed|buckeye|acorn|hip\b|vase|maze|garden|picket fence|lakeside|park bench|leaf|tree/],
-  ["winter",/ski\b|snowmobile|snowplow|dogsled|shovel|mitten|igloo|alp\b/]
+  ["winter",/ski\b|snowmobile|snowplow|dogsled|shovel|mitten|igloo/]
 ];
 function see(canvas){
   if(SEE.state!=="ready") return null;

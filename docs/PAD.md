@@ -757,3 +757,18 @@ The lab now plays each photo in all ten worlds, with the app's pick first, and s
 ratings in a new collection (`worlds`; the earlier `ratings` are left untouched). Each
 record also keeps the world scores, tags, image-model labels, scale and progression, so the
 world choice can be refitted from ratings.
+
+## Fix: summer mountains were landing on Aurora
+
+Two near-identical sunny alpine ride photos came out as different worlds. Both scored
+Aurora ≈ Titan (0.77/0.71 and 0.79/0.78), and the fingerprint's ±0.07 tie-breaker decided
+between them. Two causes, both fixed:
+
+- The ImageNet label **"alp" counted as winter**, which pushed any mountain toward Aurora
+  ("cold sky"). Now only real snow in the frame does: the winter tag is scaled by the snow cue.
+- The **tie-breaker was too large.** It is now ±0.02, so a real lead always wins and the
+  fingerprint only settles near-exact ties. It still varies every detail inside a world.
+
+Both rides are now Titan (0.71 and 0.78, next is Drift at 0.40). The Alpine road photo in
+the corpus moved from Aurora to Titan too. Aurora now needs actual snow or a pale, colourless
+sky.
