@@ -282,7 +282,7 @@
     <div class="cols">
       <div><dl>
         <dt>Hue → root</dt><dd>Circular mean of hue, weighted by saturation, stepped round the circle of fifths at 30° per step.</dd>
-        <dt>Feeling → chord quality</dt><dd>Two axes, not one. <b>Valence</b> (brightness, saturation, colour temperature) runs warm to cool; <b>arousal</b> (contrast, edge density, saturation, grain) runs still to busy. The pair picks one of nine chords from a grid: serene maj9, warm add9, joyful open add9, open sus2, suspended open add9, bright maj7♯11, wistful min9, moody min7, tense min♭9.</dd>
+        <dt>Feeling → chord quality</dt><dd>Two axes, not one. <b>Valence</b> (brightness, saturation, colour temperature) runs warm to cool; <b>arousal</b> (contrast, edge density, saturation, grain) runs still to busy. The pair picks one of nine chords from a grid: serene maj9, warm add9, joyful open add9, open sus2, suspended open add9, bright add9 (high 9th), wistful min9, moody min7, tense minor (dark, saw-heavy).</dd>
         <dt>Saturation → voice count</dt><dd>Grey gives a bare open fifth; vivid stacks all six notes. Colour is harmonic content.</dd>
         <dt>Vertical spread → voicing</dt><dd>Where the light sits in the frame decides close or open voicing across octaves.</dd>
         <dt>Texture → detune</dt><dd>Local entropy drives each note's oscillators apart, 2¢ glassy to 18¢ choral.</dd>
@@ -675,7 +675,12 @@ var Q={
   lydian:  {n:"maj7\u266F11", f:"maj7s11", mid:[0,4,7], top:[2,6,11], sc:[0,2,4,6,7,9,11]},
   min9:    {n:"min9",    f:"min9",    mid:[0,3,7], top:[2,3,7],    sc:[0,2,3,5,7,9,10]},
   min7:    {n:"min7",    f:"min7",    mid:[0,3,7], top:[3,7,10],   sc:[0,2,3,5,7,8,10]},
-  minb9:   {n:"min\u266D9", f:"minb9", mid:[0,3,7], top:[1,3,8],  sc:[0,1,3,5,7,8,10]}
+  minb9:   {n:"min\u266D9", f:"minb9", mid:[0,3,7], top:[1,3,8],  sc:[0,1,3,5,7,8,10]},
+  /* lab set 14 replacements for the two chords that still clashed: bright
+     loses its sharp-11 and major 7th, tense loses its flat-9 and gets its
+     weight from a low, saw-heavy minor instead */
+  brite:   {n:"add9 bright", f:"add9br", mid:[0,4,7], top:[7,12,14], sc:[0,2,4,5,7,9,11]},
+  dark:    {n:"minor",   f:"mindark", mid:[0,3,7], top:[7,12,15], sc:[0,2,3,5,7,8,10]}
 };
 /* ---- COLOUR -> INSTRUMENT ------------------------------------------------
    Hue picked the key but said nothing about the sound. Now it also picks the
@@ -706,13 +711,23 @@ function timbreFor(hue){
    growls; a warm picture is damped further, which is what used to be done
    crudely by banning sawtooth. */
 var ROLE_HARM={bass:0.34, mid:0.78, top:1.0};
-function waveFor(G,idx,role,valence,soft){
+/* SAW: a hard-edged, high-contrast or wide picture pulls the body toward a
+   sawtooth -- every harmonic at 1/n, less damping, more voices drifting --
+   which is the big "epic" pad the tuning lab asked for. It never reaches the
+   top layer, which the same ratings wanted quieter and duller. */
+var SAW_N=16;
+function waveFor(G,idx,role,valence,soft,grit){
   soft=soft||1;                           /* <1 rolls the upper harmonics off harder */
+  grit=role==="top"?0:(grit||0);
   var damp=ROLE_HARM[role]*(1.10-valence*0.30)*soft;
-  var key=idx+"|"+role+"|"+Math.round(valence*10)+"|"+Math.round(soft*20);
+  damp=damp+(Math.min(0.97,damp*1.25)-damp)*grit;
+  var key=idx+"|"+role+"|"+Math.round(valence*10)+"|"+Math.round(soft*20)+"|"+Math.round(grit*10);
   if(G.waves[key]) return G.waves[key];
-  var h=TIMBRES[idx].h, real=new Float32Array(h.length+1), imag=new Float32Array(h.length+1);
-  for(var k=0;k<h.length;k++) imag[k+1]=h[k]*Math.pow(damp,k);
+  var h=TIMBRES[idx].h, N=grit>0.05?SAW_N:h.length, real=new Float32Array(N+1), imag=new Float32Array(N+1);
+  for(var k=0;k<N;k++){
+    var col=k<h.length?h[k]:0;
+    imag[k+1]=((1-grit)*col+grit/(k+1))*Math.pow(damp,k*(1-grit*0.5));
+  }
   var w=G.ctx.createPeriodicWave(real,imag);
   G.waves[key]=w;
   return w;
@@ -720,6 +735,7 @@ function waveFor(G,idx,role,valence,soft){
 
 var BASS=[0,7];                                 /* root and fifth only, always */
 var ROLE_BASE={bass:36, mid:48, top:60};
+var TOP_CEIL=78;                                /* F#5 */
 /* More drift than before in the upper voices: the "looming" that detune was
    blamed for turned out to come from duplicate pitches and sevenths in the
    bass, both since fixed, so the body and top can breathe again. */
@@ -738,11 +754,19 @@ var MOODS=[
   ["open","suspended","bright"],
   ["wistful","moody","tense"]
 ];
+var ALT={
+  maj9:    {n:"maj7",      f:"maj7",   mid:[0,4,7], top:[7,11,16], sc:[0,2,4,5,7,9,11]},
+  add9:    {n:"add9 high", f:"add9hi", mid:[0,7,16],top:[7,12,14], sc:[0,2,4,5,7,9,11]},
+  add9open:{n:"5 add9",    f:"5add9",  mid:[0,7,12],top:[4,7,14],   sc:[0,2,4,5,7,9,11]},
+  sus2:    {n:"sus2 wide", f:"sus2w",  mid:[0,7,12],top:[7,14,19],  sc:[0,2,5,7,9,10]},
+  min9:    {n:"min add9",  f:"madd9",  mid:[0,7,15],top:[7,12,14],  sc:[0,2,3,5,7,8,10]},
+  min7:    {n:"min11",     f:"min11",  mid:[0,3,7], top:[5,7,10],  sc:[0,2,3,5,7,8,10]}
+};
 var GRID=[
   /*            calm        mid          energetic   */
   /* warm   */ [Q.maj9,    Q.add9,      Q.open9 ],
-  /* neutral*/ [Q.sus2,    Q.open9,     Q.lydian],
-  /* cool   */ [Q.min9,    Q.min7,      Q.minb9 ]
+  /* neutral*/ [Q.sus2,    Q.open9,     Q.brite ],
+  /* cool   */ [Q.min9,    Q.min7,      Q.dark  ]
 ];
 function rootOf(f){
   /* One colourful object should pick the key instead of being averaged into
@@ -750,14 +774,22 @@ function rootOf(f){
      so they fall back to warm/cool balance, which is stable across angles. */
   var grey=f.dominance<0.22 || f.sat<0.07;
   var h=grey ? ((f.warmth*1.9+f.hue*0.55)%1+1)%1 : f.hueDom;
-  return { pc:FIFTHS[Math.round(h*12)%12], grey:grey };
+  /* Hue alone put every blue photo on C-sharp. Lightness and the second
+     colour now nudge the key up to two steps round the circle of fifths
+     (neighbouring keys, so it still suits the colour), which separates
+     pictures of the same colour. */
+  var nudge=(f.light-0.45)*5 + (f.hue2Share>0.12?((f.hue2-h+1.5)%1-0.5)*3:0);
+  var idx=Math.round(h*12+Math.max(-2,Math.min(2,nudge)));
+  return { pc:FIFTHS[((idx%12)+12)%12], grey:grey };
 }
 /* VALENCE — how warm the picture feels. Brightness leads, but saturation and
    colour temperature carry real weight, so a vivid cool photo and a washed-out
    warm one no longer collapse onto the same mood.
    AROUSAL — how much is going on: contrast, edge density, saturation, grain. */
 function affect(c){
-  var val=0.45*c.light + 0.22*c.sat + 0.25*c.warmth + 0.08*(1-c.density);
+  /* lab set 14: minor chords lost on every bright blue photo, so colour
+     temperature now counts for less and lightness for more */
+  var val=0.55*c.light + 0.22*c.sat + 0.12*c.warmth + 0.11*(1-c.density);
   var aro=0.38*c.contrast + 0.30*c.density + 0.20*c.sat + 0.12*c.grain;
   /* Centred and scaled on real photographs rather than synthetic test scenes:
      their measured spread is narrow (0.19 on both axes), so a gentle curve
@@ -774,6 +806,9 @@ function qualityOf(c){
   /* row 0 = warm feeling, row 2 = cool; column 0 = calm, column 2 = energetic */
   var r=2-band(a.valence), col=band(a.arousal);
   var q=GRID[r][col];
+  /* a sharp, detailed picture takes the cell's alternate voicing, so two
+     pictures with the same mood still differ in harmony */
+  if(c.sharp>0.55 && ALT[q.f]) q=ALT[q.f];
   return { q:q, mood:MOODS[r][col] };
 }
 /* snap any pitch class into the primary chord's scale, so extra layers and
@@ -810,6 +845,8 @@ function buildPatch(f){
      photos were rated "too much high end"). 0 on anything light or warm. */
   var hh=((f.hueDom%1)+1)%1, coolHue=(f.dominance>=0.22 && hh>=0.5 && hh<0.86)?1:0.35;
   var sub=clamp((0.42-f.light)/0.25)*coolHue;
+  /* how hard-edged and big the picture is: contrast, sharpness, width */
+  var grit=clamp((0.45*c.contrast+0.30*c.width+0.25*af.arousal-0.45)*2.2 + (q.f==="mindark"?0.35:0))*(1-sub);
 
   for(i=0;i<nL;i++){
     var bd=bs[i], bc=calib(bd), role=ROLES[i];
@@ -835,6 +872,23 @@ function buildPatch(f){
       used[m]=1; notes.push(m);
     }
     if(!notes.length){ notes.push(base+br.pc+set[0]+12); }
+    /* CEILING: nothing in the top layer above F-sharp 5. Wide shapes in a
+       high key used to climb to G6, which is most of what "too strong high
+       note" meant in the lab. Fold down an octave where that is clean,
+       otherwise drop the note. */
+    if(role==="top"){
+      var kept=[];
+      notes.forEach(function(m){
+        if(m<=TOP_CEIL){ kept.push(m); return; }
+        delete used[m];
+        var d=m-12*Math.ceil((m-TOP_CEIL)/12), ok=!used[d];
+        for(var uu in used) if(Math.abs(+uu-d)<3 && +uu!==d) ok=false;
+        kept.forEach(function(x){ if(Math.abs(x-d)<3) ok=false; });
+        if(ok){ used[d]=1; kept.push(d); }
+      });
+      if(!kept.length){ var lo=Math.min.apply(null,notes); while(lo>TOP_CEIL) lo-=12; used[lo]=1; kept.push(lo); }
+      notes=kept.sort(function(x,y){return x-y;});
+    }
 
     /* a genuine second colour joins the top voice, never the bass */
     var second=null;
@@ -854,7 +908,7 @@ function buildPatch(f){
         if(!clash) break;
         m2+=12; tries++;
       }
-      if(pc2>=0 && tries<3 && !used[m2]){ used[m2]=1; second=m2; notes.push(m2); }
+      if(pc2>=0 && tries<3 && !used[m2] && m2<=TOP_CEIL){ used[m2]=1; second=m2; notes.push(m2); }
     }
 
     layers.push({
@@ -862,10 +916,13 @@ function buildPatch(f){
       coverage:bd.coverage, role:role,
       /* detune scales with register: beating that is pleasant up top is mud
          at the bottom, so the bass barely moves */
-      detune:(3+c.entropy*8)*(1.25-dom*0.45)*ROLE_DETUNE[role],
+      detune:(3+c.entropy*8)*(1.25-dom*0.45)*ROLE_DETUNE[role]*(role==="mid"?1+grit*1.2:1),
+      grit:grit,
       cutoff:Math.max(ROLE_CUT_FLOOR[role]*(1-0.45*sub),
                       300*Math.pow(23,Math.pow(bc.light,1.15))*(0.72+af.arousal*0.75)*
-                      (role==="top"?0.75:1))*(role==="bass"?1:1-0.45*sub),
+                      (role==="top"?0.75:1))*(role==="bass"?1:1-0.45*sub)*
+                      /* a saw needs the filter open or it is just a louder sine */
+                      (role==="mid"?1+grit*1.3:role==="bass"?1+grit*0.5:1),
       q:0.5+bc.contrast*1.7,
       lfoRate:(0.025+c.density*0.22)*(1+i*0.22)*(0.65+af.arousal*0.9),
       lfoDepth:0.25+bc.contrast*0.65,
@@ -907,7 +964,7 @@ function buildPatch(f){
     sub: 0.03+0.025*(1-af.arousal)
   };
   return { rootName:PRETTY[br.pc], root:br.pc, quality:q.n, qfile:q.f, scale:q.sc,
-    layers:layers, fx:fx, c:c, f:f, submerged:sub, grey:br.grey, affect:af, mood:qq.mood,
+    layers:layers, fx:fx, c:c, f:f, submerged:sub, grit:grit, grey:br.grey, affect:af, mood:qq.mood,
     timbre:TIMBRES[timbreFor(br.grey?f.hue:f.hueDom)].n };
 }
 function allNotes(p){
@@ -1118,7 +1175,7 @@ function applyTo(G,p,glide){
       for(s=0;s<SLOTS;s++){
         var slot=lay.slots[s], has=s<src.notes.length;
         var f=hz((has?src.notes[s]:src.notes[0])+tr);
-        var pw=waveFor(G,src.timbre,src.role,p.affect?p.affect.valence:0.5,p.soft);
+        var pw=waveFor(G,src.timbre,src.role,p.affect?p.affect.valence:0.5,p.soft,src.grit);
         for(o=0;o<2;o++){
           set(slot.oscs[o].frequency,f);
           set(slot.oscs[o].detune,(o?1:-1)*src.detune);

@@ -627,3 +627,33 @@ Eight photos were rated in the lab. The findings, and what changed in the engine
 - **Kept:** moody min7 (rated best on a warm-orange photo), serene maj9, wistful min9.
   *Deep* (minor) was rated 👎 on every warm photo, which confirms minor is right only for
   cool pictures.
+
+## Training set 14: variety, saws, no clashing chords
+
+Six new photos, most of them blue. The main complaint was *"all images with similar
+colours sound exactly the same"*, and it was literally true: every one of them came out
+on C♯, because the key came from hue alone. Other feedback: *"minors don't work for bright
+images"*, and twice *"more saws / a very big saw"* for an epic or ominous feel.
+
+- **Key nudge.** Lightness, and a real second colour, now move the root up to two
+  steps round the circle of fifths from the hue's key. Neighbouring keys still suit the
+  colour, and same-colour photos separate: 8 keys across the corpus instead of 6.
+- **Blue is not sad.** Valence weights colour temperature 0.12 (was 0.25) and lightness
+  0.55 (was 0.45). A bright blue photo now lands in the open or suspended row, not wistful.
+- **No clashing chord qualities.** *bright* maj7♯11 became **add9 bright** (major, with a
+  high 9th). *tense* min♭9 became **minor (dark)**, a plain minor that gets its weight from
+  +0.35 grit instead of a flat 9th. Across 34 photos (corpus plus training records) there
+  are now 3 semitone, major-7th or tritone pairs, all the 9th inside min9, which was
+  rated 👍.
+- **Alternate voicings.** Sharp, detailed pictures take the mood's alternate chord
+  (`ALT`: maj7, add9 high, 5 add9, sus2 wide, min add9, min11), so two photos with the
+  same mood can still differ.
+- **Saw / grit.** `grit` (contrast, width and energy) blends the body and bass wave toward
+  a 16-harmonic sawtooth with less damping, widens the middle layer's detune (supersaw),
+  and opens those filters so the harmonics are audible. The top never gets grit.
+- **Top ceiling.** No top-layer note above F♯5. Before this, wide shapes in high keys
+  reached G6 on 13 of 34 photos.
+- **Lab:** *Pure* (lowest-rated overall) is replaced by **Epic**, which plays the mapped
+  chord as a big detuned saw.
+- Note: the suspended photos in this set were rated against the old quartal chord, so
+  that page was still an older build. Ratings are only comparable after a reload.
