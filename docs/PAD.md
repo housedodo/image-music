@@ -657,3 +657,103 @@ images"*, and twice *"more saws / a very big saw"* for an epic or ominous feel.
   chord as a big detuned saw.
 - Note: the suspended photos in this set were rated against the old quartal chord, so
   that page was still an older build. Ratings are only comparable after a reload.
+
+# Worlds: variety you can hear after the fourth photo
+
+Tuning the pad made photos differ, but every one still had the same *shape*: one held
+chord, three layers, the same slow swell. People hear that shape within three or four
+pictures, whatever the key or timbre. So the picture now also decides **what kind of sound**
+it becomes, and several things keep it moving.
+
+## Ten worlds
+
+| world | engine | chosen by |
+|---|---|---|
+| Drift | the pad as before, plus rare bell glints on the picture's highlights | the default, about a third of photos |
+| Glass | struck glass / music-box / kalimba notes, placed by the highlights (higher in the frame = higher pitch, left-right = pan) | sharp pictures with many highlights, foliage, plants |
+| Tide | two noise "waves" on different periods and a narrow wind band tuned to the chord root | water at the bottom, sky at the top, a water label |
+| Choir | sawtooth voices through three formant filters, vowel changing with each chord | a detected face |
+| Pulse | a plucked arpeggio on whole bars, dotted-eighth echo | strong repetition, city lights in the dark, a city label |
+| Titan | pad at full grit plus a driven saw power chord that swells with every chord change | contrast × width, energy, a vast-landscape label |
+| Dust | tape wow on every oscillator, record crackle, extra hiss | low saturation and low contrast, grain |
+| Abyss | top removed, body dark and slow, deep sub, sonar pings every 7–16 s | dark and not warm |
+| Ember | soft fire crackle, low rumble, kalimba notes | warm glow in the dark, fire or food labels |
+| Aurora | slow sine tones drifting in and out above the chord, long tail | snow, pale sky, a winter label |
+
+`worldScores()` holds the votes, `worldPatch()` reshapes the pad for each world, and
+`ENGINES` holds each world's sound sources and events. Scores were tuned on the 21-photo set
+(`tools/calibration/tune-worlds.mjs`): 9 of the 10 worlds occur, and Drift wins 7 of 21.
+Ember appeared once, on the warm, dark food photo.
+
+## What is in the picture
+
+- **Colour-and-position cues** (always available) in `analysePixels()`: skin (YCbCr box,
+  centre-weighted), sky (blue or white, smooth, top third), water (blue-cyan, bottom half),
+  foliage, snow, lights (bright points in a mostly dark frame), glow (warm highlights in the
+  dark), sparkle (small highlights clear of their surroundings). The skin cue also fires on
+  cardboard and orange tones, so on its own it only nudges Choir.
+- **On-device image model** (where it can load): MediaPipe's EfficientNet-Lite0 ImageNet
+  classifier (int8, 5.4 MB) and BlazeFace (230 KB), fetched from jsDelivr and Google's
+  model bucket on the first photo pick, then cached by the browser. Labels map to tags
+  (`TAG_RULES`: cat, creature, water, vast, city, fire, food, flora, winter), and a face
+  larger than 1.2 % of the frame sets `face`. The app waits at most 2.5 s for it. Where the
+  host blocks it (likely inside the claude.ai artifact frame), or the phone is offline,
+  everything runs on the cues alone.
+- **Content extras in any world:** a cat gets a quiet purr (lowpassed noise, amplitude-
+  modulated at ~25 Hz, breathing). Foliage under a sky, or a flora label, brings occasional
+  birdsong in the calm worlds.
+
+## Movement
+
+- **Progression.** The picture is cut into four vertical strips. Each strip's difference in
+  lightness and hue from the first picks the next chord from a consonant set (major:
+  I IV vi V ii; minor: i VI III VII iv). There are 2–4 chords depending on how much the
+  strips differ, each lasting 10–20 s (calm pictures are slower; Pulse rounds to whole
+  bars). Every chord is re-voiced by the same `voiceLayer()` rules as the first chord
+  (clearance, top ceiling), so a moving chord is never rougher than a still one.
+- **Scan.** The 16-column brightness profile becomes a custom periodic waveform (Fourier
+  series, 6 harmonics) that moves the body and top filters once per trip through the
+  progression. The sound brightens where the picture does, left to right.
+
+## Scales and the fingerprint
+
+Melodic events (bells, arpeggios, pings, kalimba) use a scale picked per picture: major
+pentatonic, major, mixolydian, lydian or suspended pentatonic over major chords; minor
+pentatonic, dorian, natural minor, hirajoshi or in-sen over minor chords. Each chord gets
+its own pool of those scale tones, with anything a semitone or tritone from a held note
+removed. The unusual scales therefore add colour without ever clashing with the pad.
+
+`fp` is a 32-bit hash of the picture at 16×16 (brightness in 8 levels plus two colour
+bits). It seeds the random numbers for every detail: event timing, arpeggio pattern, the
+scale, which world wins when two score within 0.14, and a per-world style (bell type,
+vowel order, square or saw pluck). The same photo always sounds the same, and a second
+shot of the same scene differs in the details.
+
+## Discovery
+
+The worlds this device has heard are kept in `localStorage` (`pad.worlds.v1`). Under the
+picture, ten dots show which worlds have been found, the current one is highlighted, and a
+new one says *new world found*.
+
+## The shimmer was most of the harsh top
+
+While balancing the worlds, A-weighted measurement traced most of the 2–4 kHz energy on
+warm, high-key photos to the **shimmer halo**, not to the chord. It sat two octaves above
+the root, so for G it played G6 and D7 (1.6–2.3 kHz), exactly where hearing is most
+sensitive. One octave lower, the cat photo's perceived centroid fell from 1266 Hz to 845 Hz,
+and its A-weighted share above 2 kHz from 32 % to 0 %. This is probably much of what
+"the high tone is too strong" meant in every round of lab feedback.
+
+## Levels
+
+All ten worlds were rendered on three photos through the offline graph
+(`tools/calibration/render/worlds.cjs`). RMS sits between −23 and −17 dB, with Drift around
+−19. Titan is 2–3 dB louder on purpose. Peaks are 0.40–0.73, and there were no errors and
+no NaNs.
+
+## Lab v2
+
+The lab now plays each photo in all ten worlds, with the app's pick first, and stores
+ratings in a new collection (`worlds`; the earlier `ratings` are left untouched). Each
+record also keeps the world scores, tags, image-model labels, scale and progression, so the
+world choice can be refitted from ratings.

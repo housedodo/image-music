@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2026-09-23 07:13 UTC">
+<html lang="en" data-build="2026-09-23 07:45 UTC">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -68,6 +68,14 @@
   .mood b{font-size:19px;font-weight:600;letter-spacing:-.01em;text-transform:capitalize;}
   .mood i{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.11em;
     text-transform:uppercase;color:var(--ink-3);font-style:normal;margin-top:1px;}
+  .found{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:6px;}
+  .found .dots{display:flex;gap:5px;}
+  .found .dots i{width:8px;height:8px;border-radius:50%;border:1px solid var(--ink-3);display:block;}
+  .found .dots i.on{background:var(--ink-3);border-color:var(--ink-3);}
+  .found .dots i.now{background:var(--jade);border-color:var(--jade);box-shadow:0 0 0 2px var(--jade-soft);}
+  .found #foundTxt{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--ink-3);}
+  .found #foundTxt b{color:var(--jade);font-weight:500;}
+  .mood .line{display:block;font-size:12.5px;color:var(--ink-2);font-style:normal;margin-top:1px;letter-spacing:0;text-transform:none;font-family:var(--disp);}
   .breath{position:absolute;inset:auto 0 0 0;height:2px;background:var(--jade);transform-origin:left;transform:scaleX(0);}
 
   .bandlegend{display:flex;gap:6px;margin-top:8px;}
@@ -244,7 +252,8 @@
         <div class="breath" id="breath"></div>
       </div>
 
-      <p class="mood" id="mood"><b>—</b><i>—</i></p>
+      <div class="mood" id="mood"><b>—</b><i>—</i></div>
+      <div class="found" id="found" aria-live="polite"><span class="dots" id="dots"></span><span id="foundTxt"></span></div>
 
       <div class="install" id="install">
         <p id="installTxt"></p>
@@ -282,6 +291,7 @@
         <h2>Patch</h2>
         <p class="chordline" id="chord">—</p>
         <p class="voicing" id="voicing">—</p>
+        <p class="voicing" id="scene" style="color:var(--ink-2)">—</p>
         <details id="rowsWrap" open><summary>All seventeen mappings</summary><div id="rows"></div></details>
         <div class="bandlegend expert" id="bandlegend"></div>
         <p class="near" id="near"></p>
@@ -305,6 +315,10 @@
   </div>
 
   <div id="learn">
+  <section>
+    <h3>Ten worlds</h3>
+    <p class="note">The picture first decides what <em>kind</em> of sound it becomes: <b>Drift</b> (the plain pad), <b>Glass</b> (bells placed by the picture's highlights), <b>Tide</b> (waves and a wind that finds the chord), <b>Choir</b> (formant voices, when there is a face), <b>Pulse</b> (an arpeggio, for repeating patterns and city lights), <b>Titan</b> (huge saw swells), <b>Dust</b> (tape wobble and crackle), <b>Abyss</b> (deep, with distant pings), <b>Ember</b> (fire and kalimba) and <b>Aurora</b> (slow high light). Colour, position, texture and, where an on-device image model can load, what is actually in the frame all vote. The chord then moves through two to four steps read from the picture's left-to-right strips, melodies use a scale chosen per picture, and a fingerprint of the pixels sets every small detail — so the same photo always sounds the same, and a different photo of the same thing still sounds a little different. Worlds you have found are remembered on this device.</p>
+  </section>
   <section>
     <h3>What the picture controls</h3>
     <p class="note">Fifteen measurements, no sequencer. Only two of them quantise — the root and the chord quality — so the odds of two unrelated photos giving the same patch are vanishingly small.</p>
@@ -612,6 +626,61 @@ function analysePixels(d,W,H){
     var e=0; for(k=0;k<16;k++) if(hh2[k]){ var pr=hh2[k]/64; e-=pr*Math.log2(pr); }
     ent+=e/4; tiles++;
   }
+  /* ---- CONTENT CUES --------------------------------------------------------
+     Cheap guesses at what is IN the picture, from colour and position alone:
+     skin, sky at the top, water at the bottom, foliage, snow, city lights in
+     the dark, a warm glow. They steer which sound world plays; an on-device
+     image model, where one loads, refines them. */
+  var cGlint=0,cSkin=0,cSky=0,cSkyN=0,cWater=0,cWaterN=0,cLeaf=0,cSnow=0,cBright=0,cGlow=0,cDark=0,cW=0;
+  var strips=[0,1,2,3].map(function(){ return {l:0,x:0,y:0,s:0,n:0}; });
+  var scan=new Float32Array(16), scanN=new Float32Array(16), glints=[];
+  for(i=0;i<n;i++){
+    var o4=i*4, R4=d[o4], G4=d[o4+1], B4=d[o4+2], hv4=hsv(R4,G4,B4), L4=lum[i];
+    var yy4=((i/W)|0)/H, xx4=(i%W)/W;
+    var sx4=xx4-0.5, sy4=yy4-0.5, cw=Math.exp(-(sx4*sx4+sy4*sy4)/0.18);
+    /* skin: the classic YCbCr box, weighted toward the centre of the frame */
+    var Y4=0.299*R4+0.587*G4+0.114*B4, Cb=128-0.1687*R4-0.3313*G4+0.5*B4, Cr=128+0.5*R4-0.4187*G4-0.0813*B4;
+    if(Y4>60 && Cr>138 && Cr<173 && Cb>80 && Cb<128 && hv4[1]>0.12 && hv4[1]<0.68) cSkin+=cw;
+    cW+=cw;
+    var blueish=hv4[0]>0.47&&hv4[0]<0.72;
+    var tex=Math.abs(lum[i]-blur[i]);
+    if(yy4<0.35){ cSkyN++; if(((blueish&&hv4[1]>0.08)||(L4>0.82&&hv4[1]<0.15)) && L4>0.42 && tex<0.06) cSky++; }
+    if(yy4>0.55){ cWaterN++; if(hv4[0]>0.42&&hv4[0]<0.68 && hv4[1]>0.15 && L4>0.12) cWater++; }
+    if(hv4[0]>0.16&&hv4[0]<0.45 && hv4[1]>0.22 && L4>0.08) cLeaf++;
+    if(L4>0.72 && hv4[1]<0.13) cSnow++;
+    if(L4<0.22) cDark++;
+    if(L4>0.72) cBright++;
+    if(L4>0.55 && hv4[1]>0.45 && (hv4[0]<0.13||hv4[0]>0.95)) cGlow++;
+    var st4=Math.min(3,(xx4*4)|0), sw4=hv4[1]*hv4[2];
+    strips[st4].l+=L4; strips[st4].x+=Math.cos(hv4[0]*6.2831853)*sw4; strips[st4].y+=Math.sin(hv4[0]*6.2831853)*sw4;
+    strips[st4].s+=hv4[1]; strips[st4].n++;
+    var sc4=Math.min(15,(xx4*16)|0); scan[sc4]+=L4; scanN[sc4]++;
+    /* glints: small highlights standing well clear of their surroundings */
+    if(L4>0.62 && L4-blur[i]>0.18){ cGlint++; if(glints.length<48 && (cGlint%7)===1) glints.push([+xx4.toFixed(3),+yy4.toFixed(3)]); }
+  }
+  for(k=0;k<16;k++) scan[k]=scanN[k]?scan[k]/scanN[k]:0;
+  var darkFrac=cDark/n, SPARK_K=18;   /* 0.055 of the frame in glints = 1 */
+  var cues={
+    skin: clamp(cSkin/cW*2.2),
+    sky: cSkyN?clamp(cSky/cSkyN*1.4):0,
+    water: cWaterN?clamp(cWater/cWaterN*1.3):0,
+    foliage: clamp(cLeaf/n*1.6),
+    snow: clamp(cSnow/n*2.2),
+    /* bright points in a mostly dark frame: street lights, windows, stars */
+    lights: darkFrac>0.35 ? clamp(cBright/n*9)*clamp((darkFrac-0.35)*3) : 0,
+    glow: clamp(cGlow/n*5)*clamp(darkFrac*2.5),
+    sparkle: clamp(cGlint/n*SPARK_K)
+  };
+  /* FINGERPRINT: a hash of the picture at 16x16, quantised. Identical photo,
+     identical number; a different photo of the same scene, a different one.
+     It only ever chooses details (event timing, patterns, which of two close
+     worlds), never the key or the mood. */
+  var fp=2166136261>>>0;
+  for(var fy=0;fy<16;fy++) for(var fx=0;fx<16;fx++){
+    var fi=((fy*H/16)|0)*W+((fx*W/16)|0), fo=fi*4;
+    var q4=(((lum[fi]*8)|0)<<3) | (((d[fo]>d[fo+2])?1:0)<<2) | (((d[fo+1]>d[fo])?1:0)<<1);
+    fp^=q4; fp=Math.imul(fp,16777619)>>>0;
+  }
   return { hue:hue, hueDom:p1.hue, hue2:p2.hue, hue2Share:hue2Share, colourfulness:dominance,
     dominance:dominance,
     sat:mix(satN?satS/satN:0, salSat),
@@ -624,6 +693,10 @@ function analysePixels(d,W,H){
     plainWarmth:clamp(((rS-bS)/(rS+bS+1e-6))*2+.5),
     grain:clamp(grain/n*6), depth:clamp(Math.abs(topL-botL)/(n/2)*1.4),
     period:periodN, periodStrength:periodStrength,
+    cues:cues, glints:glints, scan:Array.prototype.slice.call(scan).map(function(v){return +v.toFixed(3);}),
+    strips:strips.map(function(t){ var h=Math.atan2(t.y,t.x)/6.2831853; if(h<0)h+=1;
+      return {light:t.n?t.l/t.n:0, hue:h, sat:t.n?t.s/t.n:0}; }),
+    fp:fp,
     bands:bands(d,W,H) };
 }
 
@@ -858,6 +931,41 @@ function snap(pc,rootPc,scale,notRoot){
    each with its own hue, voice count, filter and position. A flat photo has
    one populated band and plays one layer; a photo with real range plays three.
    Nothing stacks across photos -- every picture is its own pad. */
+/* Voice one layer: the role's interval set on a root, with the clearance and
+   ceiling rules. Shared by buildPatch and by chord progressions, so a moving
+   chord obeys exactly the same register rules as the first one. */
+function voiceLayer(role,pc,q,want,used,sink){
+  var set = role==="bass" ? BASS : q[role];
+  want=Math.min(want,set.length,SLOTS);
+  var base=ROLE_BASE[role] - (role==="top" && sink ? 12 : 0);
+  if(role==="top"){
+    var highest=0,u;
+    for(u in used) if(+u>highest) highest=+u;
+    var lowest=base+pc+Math.min.apply(null,set);
+    while(highest && lowest-highest<3){ base+=12; lowest+=12; }
+  }
+  var notes=[], k;
+  for(k=0;k<want;k++){
+    var m=base+pc+set[k];
+    if(used[m]) continue;
+    used[m]=1; notes.push(m);
+  }
+  if(!notes.length){ notes.push(base+pc+set[0]+12); used[base+pc+set[0]+12]=1; }
+  if(role==="top"){
+    var kept=[];
+    notes.forEach(function(m){
+      if(m<=TOP_CEIL){ kept.push(m); return; }
+      delete used[m];
+      var d=m-12*Math.ceil((m-TOP_CEIL)/12), ok=!used[d];
+      for(var uu in used) if(Math.abs(+uu-d)<3 && +uu!==d) ok=false;
+      kept.forEach(function(x){ if(Math.abs(x-d)<3) ok=false; });
+      if(ok){ used[d]=1; kept.push(d); }
+    });
+    if(!kept.length){ var lo=Math.min.apply(null,notes); while(lo>TOP_CEIL) lo-=12; used[lo]=1; kept.push(lo); }
+    notes=kept.sort(function(x,y){return x-y;});
+  }
+  return {notes:notes, base:base};
+}
 function buildPatch(f){
   var c=calib(f), br=rootOf(f), qq=qualityOf(c), q=qq.q, af=affect(c);
   var bs=(f.bands||[]).filter(function(b){ return b; });
@@ -885,39 +993,7 @@ function buildPatch(f){
     var want = role==="bass" ? 2 : (bc.sat<.30?2 : bc.sat<.62?3 : 4);
     want = Math.max(2, Math.min(Math.min(set.length,SLOTS), want + (dom>0.62?-1:dom<0.34?1:0)));
 
-    var base=ROLE_BASE[role] - (role==="top" && sub>0.5 ? 12 : 0);
-    /* lift the top voice clear of whatever the middle one ended on: a whole
-       tone straddling two layers beats as badly as one inside a chord */
-    if(role==="top"){
-      var highest=0,u;
-      for(u in used) if(+u>highest) highest=+u;
-      var lowest=base+br.pc+Math.min.apply(null,set);
-      while(highest && lowest-highest<3){ base+=12; lowest+=12; }
-    }
-    var notes=[], k;
-    for(k=0;k<want;k++){
-      var m=base+br.pc+set[k];
-      if(used[m]) continue;          /* never two layers on the same pitch */
-      used[m]=1; notes.push(m);
-    }
-    if(!notes.length){ notes.push(base+br.pc+set[0]+12); }
-    /* CEILING: nothing in the top layer above F-sharp 5. Wide shapes in a
-       high key used to climb to G6, which is most of what "too strong high
-       note" meant in the lab. Fold down an octave where that is clean,
-       otherwise drop the note. */
-    if(role==="top"){
-      var kept=[];
-      notes.forEach(function(m){
-        if(m<=TOP_CEIL){ kept.push(m); return; }
-        delete used[m];
-        var d=m-12*Math.ceil((m-TOP_CEIL)/12), ok=!used[d];
-        for(var uu in used) if(Math.abs(+uu-d)<3 && +uu!==d) ok=false;
-        kept.forEach(function(x){ if(Math.abs(x-d)<3) ok=false; });
-        if(ok){ used[d]=1; kept.push(d); }
-      });
-      if(!kept.length){ var lo=Math.min.apply(null,notes); while(lo>TOP_CEIL) lo-=12; used[lo]=1; kept.push(lo); }
-      notes=kept.sort(function(x,y){return x-y;});
-    }
+    var vl=voiceLayer(role,br.pc,q,want,used,sub>0.5), notes=vl.notes, base=vl.base;
 
     /* a genuine second colour joins the top voice, never the bass */
     var second=null;
@@ -941,7 +1017,7 @@ function buildPatch(f){
     }
 
     layers.push({
-      pc:br.pc, notes:notes, voices:notes.length, octave:Math.floor(base/12)-1, second:second,
+      pc:br.pc, notes:notes, voices:notes.length, want:want, sink:sub>0.5, octave:Math.floor(base/12)-1, second:second,
       coverage:bd.coverage, role:role,
       /* detune scales with register: beating that is pleasant up top is mud
          at the bottom, so the bass barely moves */
@@ -992,7 +1068,7 @@ function buildPatch(f){
     shimmer: clamp(0.15+0.55*af.valence+0.30*c.light)*0.65*(1-0.7*sub),
     sub: 0.03+0.025*(1-af.arousal)
   };
-  return { rootName:PRETTY[br.pc], root:br.pc, quality:q.n, qfile:q.f, scale:q.sc,
+  return { rootName:PRETTY[br.pc], root:br.pc, q:q, quality:q.n, qfile:q.f, scale:q.sc,
     layers:layers, fx:fx, c:c, f:f, submerged:sub, grit:grit, grey:br.grey, affect:af, mood:qq.mood,
     timbre:TIMBRES[timbreFor(br.grey?f.hue:f.hueDom)].n };
 }
@@ -1189,7 +1265,7 @@ function graph(ctx,eco){
     }
     layers.push({g:lg,filt:lf,pan:lp,lfo:lfo,lfoAmt:lfoAmt,evo:evo,evoAmt:evoAmt,slots:slots});
   }
-  return {ctx:ctx,waves:{},out:out,bus:bus,dry:dry,wet:wet,pre:pre,dly:dly,fb:fb,dlyMix:dlyMix,
+  return {ctx:ctx,waves:{},out:out,bus:bus,busIn:busIn,fdnIn:fdnIn,dry:dry,wet:wet,pre:pre,dly:dly,fb:fb,dlyMix:dlyMix,
     fdnSend:fdnSend,combs:combs,sub:sub,subG:subG,shim:shim,shimG:shimG,
     chMix:chMix,chAmtA:chAmtA,chAmtB:chAmtB,chLfo:chLfo,ngain:ngain,layers:layers};
 }
@@ -1231,8 +1307,11 @@ function applyTo(G,p,glide){
   G.combs.forEach(function(cb){ set(cb.g.gain, Math.pow(10,-3*cb.t/fx.tail)); });
   set(G.sub.frequency, hz(24+((p.root+tr)%12+12)%12));
   set(G.subG.gain, fx.sub);
-  set(G.shim[0].frequency, hz(84+((p.root+tr)%12+12)%12));
-  set(G.shim[1].frequency, hz(91+((p.root+tr)%12+12)%12));
+  /* one octave lower than it was: two octaves up put the halo's fifth at
+     1.6-2.3 kHz for keys from G upward, where the ear is most sensitive --
+     A-weighted, it was a third of everything heard on a G pad */
+  set(G.shim[0].frequency, hz(72+((p.root+tr)%12+12)%12));
+  set(G.shim[1].frequency, hz(79+((p.root+tr)%12+12)%12));
   set(G.shimG.gain, fx.shimmer*0.08);
   set(G.dly.delayTime,fx.delayTime);
   set(G.fb.gain,fx.delayFeedback);
@@ -1245,6 +1324,558 @@ function applyTo(G,p,glide){
   set(G.wet.gain,fx.wet);
   set(G.dry.gain,1-fx.wet*0.42);
   set(G.ngain.gain,fx.air*0.012);
+}
+
+/* ================= worlds =================
+   The pad above is one instrument. Tuning its settings made photos differ,
+   but they still shared one shape -- a held chord, three layers, the same
+   swell -- and people hear the shape after three or four pictures. So the
+   picture now also chooses WHAT KIND of sound it becomes: one of ten worlds,
+   each a different engine layered on (or replacing parts of) the pad.
+   On top of the world:
+   - movement: 2-4 chords taken from the picture's left-to-right strips, and a
+     filter scan that reads the picture's brightness across as it plays;
+   - scales: melodic events use a scale picked per picture, filtered so no
+     note ever sits a semitone or tritone from the chord that is sounding;
+   - fingerprint: a hash of the pixels seeds every detail (timing, patterns,
+     which of two close worlds), so the same photo always sounds the same and
+     a near-identical photo still sounds a little different. */
+
+function rng(seed){
+  var a=(seed>>>0)||1;
+  return function(){
+    a=(a+0x6D2B79F5)>>>0; var t=a;
+    t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61);
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+function hueDiff(a,b){ var d=((a-b)%1+1.5)%1-0.5; return d; }
+
+var WORLDS=[
+  {id:"drift",  name:"Drift",  line:"a slow pad that breathes"},
+  {id:"glass",  name:"Glass",  line:"bells scattered in the light"},
+  {id:"tide",   name:"Tide",   line:"waves under a held chord"},
+  {id:"choir",  name:"Choir",  line:"voices out of the picture"},
+  {id:"pulse",  name:"Pulse",  line:"a patterned arpeggio"},
+  {id:"titan",  name:"Titan",  line:"huge detuned saws"},
+  {id:"dust",   name:"Dust",   line:"an old record, slightly warped"},
+  {id:"abyss",  name:"Abyss",  line:"deep water, distant pings"},
+  {id:"ember",  name:"Ember",  line:"a fire and a kalimba"},
+  {id:"aurora", name:"Aurora", line:"slow light in a cold sky"}
+];
+var WORLD={}; WORLDS.forEach(function(w){ WORLD[w.id]=w; });
+
+/* ---- scales: melody colour, never harmony ---- */
+var SCALES={
+  majPenta:{n:"major pentatonic", iv:[0,2,4,7,9]},
+  ionian:  {n:"major",            iv:[0,2,4,5,7,9,11]},
+  mixo:    {n:"mixolydian",       iv:[0,2,4,5,7,9,10]},
+  lydian:  {n:"lydian",           iv:[0,2,4,6,7,9,11]},
+  suspent: {n:"suspended pentatonic", iv:[0,2,5,7,10]},
+  minPenta:{n:"minor pentatonic", iv:[0,3,5,7,10]},
+  dorian:  {n:"dorian",           iv:[0,2,3,5,7,9,10]},
+  aeolian: {n:"natural minor",    iv:[0,2,3,5,7,8,10]},
+  hira:    {n:"hirajoshi",        iv:[0,2,3,7,8]},
+  insen:   {n:"in-sen",           iv:[0,1,5,7,10]}
+};
+var SCALE_MAJ=[["majPenta",3],["ionian",1],["mixo",1],["lydian",1],["suspent",1]];
+var SCALE_MIN=[["minPenta",3],["dorian",2],["aeolian",1],["hira",1],["insen",1]];
+function pickWeighted(list,r){
+  var tot=0,i; for(i=0;i<list.length;i++) tot+=list[i][1];
+  var x=r()*tot; for(i=0;i<list.length;i++){ x-=list[i][1]; if(x<=0) return list[i][0]; }
+  return list[0][0];
+}
+
+/* ---- progressions: degrees that stay consonant, taken from the strips ---- */
+var PROG_MAJ=[{iv:0,n:"I"},{iv:5,q:"add9",n:"IV"},{iv:9,q:"min7",n:"vi"},{iv:7,q:"sus2",n:"V"},{iv:2,q:"min7",n:"ii"}];
+var PROG_MIN=[{iv:0,n:"i"},{iv:8,q:"add9",n:"VI"},{iv:3,q:"add9",n:"III"},{iv:10,q:"sus2",n:"VII"},{iv:5,q:"min7",n:"iv"}];
+
+function pcsOf(layers){
+  var s={}; layers.forEach(function(ns){ ns.forEach(function(m){ s[((m%12)+12)%12]=1; }); });
+  return Object.keys(s).map(Number);
+}
+/* the melodic pool for one chord: scale tones that clash with nothing held */
+function poolFor(p,pcs){
+  var sc=SCALES[p.scaleId].iv, out=[];
+  sc.forEach(function(iv){
+    var pc=(p.root+iv)%12, ok=true;
+    pcs.forEach(function(h){ var d=((pc-h)%12+12)%12; if(d===1||d===11||d===6) ok=false; });
+    if(ok) out.push(pc);
+  });
+  return out.length?out:pcs;
+}
+function materialise(p,s){
+  var q=s.q?Q[s.q]:p.q, pc=(p.root+s.iv)%12, layers;
+  if(s.iv===0 && !s.q) layers=p.layers.map(function(l){ return l.notes.slice(); });
+  else {
+    var used={};
+    layers=p.layers.map(function(l){
+      var v=voiceLayer(l.role,pc,q,l.want||l.notes.length,used,l.sink).notes.slice(0,l.notes.length);
+      while(v.length<l.notes.length) v.push(v[v.length-1]);
+      return v;
+    });
+  }
+  var pcs=pcsOf(layers);
+  var choir=voiceLayer("mid",pc,q,3,{},false).notes;
+  return {iv:s.iv, n:s.n, root:pc, qn:q.n, layers:layers, pcs:pcs, pool:poolFor(p,pcs), choir:choir};
+}
+function progressionOf(f,p,r){
+  var fam=p.minor?PROG_MIN:PROG_MAJ, st=f.strips, steps=[fam[0]], used={0:1};
+  var spread=0, i;
+  if(st) for(i=1;i<4;i++) spread=Math.max(spread,Math.abs(st[i].light-st[0].light)+
+    Math.abs(hueDiff(st[i].hue,st[0].hue))*Math.min(1,st[i].sat*3));
+  var want=2+(spread>0.10?1:0)+(spread>0.22?1:0);
+  for(i=1;i<4 && steps.length<want;i++){
+    var dl=st?st[i].light-st[0].light:(r()-0.5), dh=st?Math.abs(hueDiff(st[i].hue,st[0].hue))*Math.min(1,st[i].sat*3):r()*0.2;
+    var opts=dl>=0?(dh>0.08?[3,1]:[1,3]):(dh>0.08?[4,2]:[2,4]);
+    var pick=used[opts[0]]?(used[opts[1]]?-1:opts[1]):opts[0];
+    if(pick<0){ for(var k=1;k<fam.length;k++) if(!used[k]){ pick=k; break; } }
+    used[pick]=1; steps.push(fam[pick]);
+  }
+  while(steps.length<2){ var k2=1+Math.floor(r()*4); if(!used[k2]){ used[k2]=1; steps.push(fam[k2]); } }
+  return steps.map(function(s){ return materialise(p,s); });
+}
+
+/* ---- which world ---- */
+function worldScores(f,c,af,tags){
+  var q=f.cues||{}, t=tags||{}, g=function(k){ return q[k]||0; }, T=function(k){ return t[k]?1:0; };
+  var dark=clamp((0.30-f.light)/0.18);
+  /* tuned on 21 photos (tools/calibration/tune-worlds.mjs): nine of the ten
+     worlds occur, the plain pad about a third of the time */
+  return {
+    drift:  0.40+0.20*T("cat"),
+    glass:  0.10+0.55*g("sparkle")*c.sharp+0.25*g("foliage")*c.sharp+0.25*T("flora"),
+    tide:   0.08+0.60*g("water")+0.30*g("sky")*(1-g("snow"))-0.15*af.arousal+0.70*T("water"),
+    choir:  0.02+0.22*g("skin")*(1-c.density)*(1-dark)+1.05*T("face"),
+    pulse:  0.04+1.6*clamp(f.periodStrength-0.36)+0.90*g("lights")+0.10*af.arousal+0.40*T("city"),
+    titan:  0.06+0.55*c.contrast*c.width+0.30*af.arousal*c.contrast+0.30*T("vast")*(1-T("water")),
+    dust:   0.06+0.55*(1-c.sat)*(1-c.contrast)*(1-dark)+0.20*c.grain*(1-c.sat),
+    abyss:  0.02+0.95*dark*(1-g("glow"))*(1-g("lights"))*(1-0.5*T("face"))*(1.2-0.8*f.warmth),
+    ember:  0.02+1.30*g("glow")+0.60*dark*f.warmth+0.60*T("fire")+0.20*T("food")+0.15*T("cat")*f.warmth,
+    aurora: 0.02+0.70*g("snow")*(1-f.warmth)+0.35*g("sky")*f.light*(1-c.sat)+0.60*T("winter")
+  };
+
+}
+
+/* The whole scene: pad + world + progression + scale + seed. */
+function buildScene(f,tags,forceWorld){
+  var p=buildPatch(f), seed=(f.fp>>>0)||((f.hueDom*1e6)|0)+1, r=rng(seed);
+  p.tags=tags||{}; p.seed=seed;
+  var sc=worldScores(f,p.c,p.affect,p.tags), best="drift", bs=-9, k;
+  for(k in sc){ var v=sc[k]+(r()-0.5)*0.14; if(v>bs){ bs=v; best=k; } }
+  p.scores=sc; p.world=forceWorld||best; p.autoWorld=best;
+  p.minor=p.q.mid.indexOf(3)>=0;
+  p.scaleId=pickWeighted(p.minor?SCALE_MIN:SCALE_MAJ,r);
+  p.prog=progressionOf(f,p,r);
+  p.stepLen=10+(1-p.affect.arousal)*10;
+  p.scan=f.scan||null;
+  p.glints=f.glints||[];
+  p.cues=f.cues||{};
+  p.style=Math.floor(r()*3);              /* per-world variant: 0,1,2 */
+  return worldPatch(p);
+}
+
+/* How each world reshapes the pad before its own engine joins. */
+function worldPatch(p){
+  var w=p.world, L=p.layers, fx=p.fx;
+  var each=function(fn){ L.forEach(function(l){ fn(l,l.role); }); };
+  if(w==="glass"){ each(function(l,r){ l.gain*=r==="top"?0.3:0.7; }); fx.shimmer*=0.6; }
+  if(w==="tide"){ each(function(l,r){ l.gain*=r==="top"?0.35:0.65; l.cutoff*=0.6; }); fx.tail=Math.max(fx.tail,9); fx.wet=Math.max(fx.wet,0.55); }
+  if(w==="choir"){ each(function(l,r){ l.gain*=r==="top"?0:r==="mid"?0.45:0.8; }); fx.wet=Math.max(fx.wet,0.5); }
+  if(w==="pulse"){
+    each(function(l,r){ l.gain*=r==="top"?0.25:0.65; });
+    p.bpm=Math.round(62+38*p.affect.arousal+(p.style-1)*6);
+    var beat=60/p.bpm; fx.delayTime=Math.min(1.9,beat*0.75); fx.delayFeedback=0.38; fx.delayMix=0.32;
+    /* the chord moves on whole bars */
+    p.stepLen=Math.max(2,Math.round(p.stepLen/(beat*4)))*beat*4;
+  }
+  if(w==="titan"){
+    each(function(l,r){ if(r!=="top"){ l.grit=1; l.cutoff*=1.4; if(r==="mid") l.detune*=1.6; } else l.gain*=0.5; });
+    fx.sub*=2.5; fx.tail=11; fx.tailSend=Math.min(0.7,fx.tailSend*1.3);
+  }
+  if(w==="dust"){ p.soft=0.7; each(function(l,r){ l.cutoff*=0.6; if(r==="top") l.gain*=0.5; }); fx.air*=2.2; fx.wet=Math.max(fx.wet,0.45); }
+  if(w==="abyss"){
+    each(function(l,r){ if(r==="top") l.gain=0; if(r==="mid"){ l.gain*=0.55; l.cutoff*=0.5; } if(r==="bass") l.gain*=1.3;
+      l.lfoRate*=0.4; l.lfoDepth=Math.min(1,l.lfoDepth*1.4); });
+    fx.sub*=3; fx.shimmer*=0.2; fx.tail=11;
+  }
+  if(w==="ember"){ p.soft=0.8; each(function(l,r){ l.cutoff*=0.8; if(r==="top") l.gain*=0.6; }); fx.shimmer*=0.5; }
+  if(w==="aurora"){ each(function(l,r){ if(r==="top") l.gain*=0.4; if(r==="bass") l.gain*=0.6; }); fx.shimmer=Math.min(0.55,fx.shimmer*1.2+0.1); fx.tail=11; fx.wet=Math.max(fx.wet,0.6); }
+  return p;
+}
+
+/* ---- sound sources used by the worlds ---- */
+function noiseBuffer(ctx){
+  if(ctx.__noise) return ctx.__noise;
+  var b=ctx.createBuffer(1,Math.floor(ctx.sampleRate*4),ctx.sampleRate), d=b.getChannelData(0), r=rng(12345);
+  for(var i=0;i<d.length;i++) d[i]=r()*2-1;
+  ctx.__noise=b; return b;
+}
+function crackleBuffer(ctx,rate,seed,soft){
+  var sr=ctx.sampleRate, b=ctx.createBuffer(1,Math.floor(sr*5),sr), d=b.getChannelData(0), r=rng(seed);
+  var n=Math.floor(5*rate);
+  for(var i=0;i<n;i++){
+    var at=Math.floor(r()*d.length), a=(r()<0.1?0.9:0.25+r()*0.35)*(r()<0.5?1:-1), len=soft?Math.floor(20+r()*120):Math.floor(2+r()*6);
+    for(var j=0;j<len && at+j<d.length;j++) d[at+j]+=a*Math.exp(-j/(len*0.3))*(soft?(r()*2-1):1);
+  }
+  return b;
+}
+function loopNoise(S,buf){
+  var src=S.G.ctx.createBufferSource(); src.buffer=buf; src.loop=true;
+  src.start(S.t0); S.persist.push(src); return src;
+}
+function lfo(S,rate,depth,param,type){
+  var ctx=S.G.ctx, o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type||"sine"; o.frequency.value=rate; g.gain.value=depth;
+  o.connect(g); g.connect(param); o.start(S.t0); S.persist.push(o); S.links.push(g);
+  return o;
+}
+/* a struck tone: additive partials with independent decays */
+var STRIKES={
+  glass:  [[1,1,3.2],[2.0,0.30,1.8],[3.0,0.12,1.0],[4.16,0.05,0.6]],
+  musicbox:[[1,1,1.6],[2.0,0.40,0.9],[3.0,0.22,0.5],[4.0,0.10,0.3]],
+  kalimba:[[1,1,1.3],[2.01,0.18,0.6],[5.9,0.05,0.07]],
+  ping:   [[1,1,5.5],[2.0,0.12,2.5]],
+  bell:   [[1,1,4.0],[2.0,0.5,2.6],[3.0,0.25,1.6],[4.2,0.10,0.9]]
+};
+function strike(S,t,m,vel,kind,pan,sendMore){
+  var ctx=S.G.ctx, f0=hz(m+S.tr), g=ctx.createGain(), pn=ctx.createStereoPanner(), parts=STRIKES[kind], end=t;
+  g.gain.value=1; pn.pan.value=pan; g.connect(pn); pn.connect(S.out);
+  if(sendMore){ var sg=ctx.createGain(); sg.gain.value=sendMore; pn.connect(sg); sg.connect(S.G.fdnIn); }
+  parts.forEach(function(pt){
+    var f=f0*pt[0]; if(f>7000) return;
+    var o=ctx.createOscillator(), e=ctx.createGain();
+    o.frequency.value=f; e.gain.setValueAtTime(0,t);
+    e.gain.linearRampToValueAtTime(vel*pt[1],t+0.004);
+    e.gain.setTargetAtTime(0,t+0.004,pt[2]/4);
+    o.connect(e); e.connect(g); o.start(t); o.stop(t+pt[2]*1.6+0.05);
+    end=Math.max(end,t+pt[2]*1.6);
+  });
+}
+function pluck(S,t,m,vel,bright,dur){
+  var ctx=S.G.ctx, o=ctx.createOscillator(), f=ctx.createBiquadFilter(), e=ctx.createGain(), pn=ctx.createStereoPanner();
+  o.type=S.p.style===2?"square":"sawtooth"; o.frequency.value=hz(m+S.tr);
+  f.type="lowpass"; f.Q.value=1; f.frequency.setValueAtTime(bright,t); f.frequency.setTargetAtTime(260,t,dur*0.25);
+  e.gain.setValueAtTime(0,t); e.gain.linearRampToValueAtTime(vel,t+0.006); e.gain.setTargetAtTime(0,t+0.006,dur/4);
+  pn.pan.value=Math.sin(m*1.7)*0.45;
+  o.connect(f); f.connect(e); e.connect(pn); pn.connect(S.out); o.start(t); o.stop(t+dur*1.5+0.05);
+}
+function chirp(S,t){
+  var ctx=S.G.ctx, r=S.r, n=2+Math.floor(r()*4), base=2600+r()*1600, pn=ctx.createStereoPanner();
+  pn.pan.value=(r()*2-1)*0.8; pn.connect(S.out);
+  for(var i=0;i<n;i++){
+    var tt=t+i*(0.09+r()*0.07), o=ctx.createOscillator(), e=ctx.createGain(), f=base*(0.9+r()*0.25);
+    o.frequency.setValueAtTime(f,tt); o.frequency.exponentialRampToValueAtTime(f*(1.25+r()*0.4),tt+0.05);
+    o.frequency.exponentialRampToValueAtTime(f*0.85,tt+0.09);
+    e.gain.setValueAtTime(0,tt); e.gain.linearRampToValueAtTime(0.011,tt+0.01); e.gain.setTargetAtTime(0,tt+0.05,0.02);
+    o.connect(e); e.connect(pn); o.start(tt); o.stop(tt+0.2);
+  }
+}
+/* pick a note from the current chord's pool inside a register */
+function noteIn(S,step,lo,hi){
+  var pool=step.pool, opts=[];
+  for(var m=lo;m<=hi;m++) if(pool.indexOf(((m%12)+12)%12)>=0) opts.push(m);
+  return opts.length?opts[Math.floor(S.r()*opts.length)]:lo;
+}
+function chordTonesIn(step,lo,hi){
+  var out=[];
+  for(var m=lo;m<=hi;m++) if(step.pcs.indexOf(((m%12)+12)%12)>=0) out.push(m);
+  return out;
+}
+
+/* ---- the engines ---- */
+var ENGINES={
+  drift:{ events:function(S,until){ glintEvents(S,until,0.03+0.10*(S.p.cues.sparkle||0),"glass",0.035); } },
+
+  glass:{ events:function(S,until){
+    var rate=0.35+0.9*(S.p.cues.sparkle||0), kind=["glass","musicbox","kalimba"][S.p.style];
+    glintEvents(S,until,rate,kind,0.10);
+  } },
+
+  tide:{ build:function(S){
+    var ctx=S.G.ctx, r=S.r;
+    [0,1].forEach(function(i){
+      var src=loopNoise(S,noiseBuffer(ctx)), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+      lp.type="lowpass"; lp.frequency.value=500+i*300; lp.Q.value=0.4;
+      g.gain.value=0.075;
+      src.connect(lp); lp.connect(g); g.connect(S.out);
+      var per=6+r()*6+i*3.3;
+      lfo(S,1/per,0.065,g.gain); lfo(S,1/per,420+i*200,lp.frequency);
+    });
+    /* the wind finds the chord: a narrow band of noise on the root */
+    var src2=loopNoise(S,noiseBuffer(ctx)), bp=ctx.createBiquadFilter(), g2=ctx.createGain();
+    bp.type="bandpass"; bp.Q.value=28; bp.frequency.value=hz(60+S.p.root+S.tr); g2.gain.value=0.10;
+    src2.connect(bp); bp.connect(g2); g2.connect(S.out); lfo(S,1/(13+r()*8),0.09,g2.gain);
+    S.wind=bp;
+  }, step:function(S,st,t){ if(S.wind) S.wind.frequency.setTargetAtTime(hz(60+st.root+S.tr),t,1.5); },
+  events:function(S,until){ glintEvents(S,until,0.02,"bell",0.03); } },
+
+  choir:{ build:function(S){
+    var ctx=S.G.ctx, r=S.r, sum=ctx.createGain(); sum.gain.value=1;
+    var VOW={a:[800,1150,2900],o:[450,800,2830],u:[325,700,2530],e:[400,1600,2700]};
+    var order=[["a","o","u","e"],["o","a","e","u"],["u","o","a","o"]][S.p.style];
+    S.vowels=order.map(function(k){ return VOW[k]; });
+    S.formants=[0,1,2].map(function(i){
+      var bp=ctx.createBiquadFilter(), g=ctx.createGain();
+      bp.type="bandpass"; bp.frequency.value=S.vowels[0][i]; bp.Q.value=[7,9,11][i]; g.gain.value=[1,0.55,0.22][i]*2.4;
+      sum.connect(bp); bp.connect(g); g.connect(S.out); return bp;
+    });
+    var vib=ctx.createOscillator(), vg=ctx.createGain(); vib.frequency.value=5.1; vg.gain.value=7; vib.connect(vg); vib.start(S.t0);
+    S.persist.push(vib); S.links.push(vg);
+    S.voices=S.p.prog[0].choir.map(function(m,i){
+      var e=ctx.createGain(); e.gain.value=0.05; e.connect(sum);
+      lfo(S,0.05+i*0.017+r()*0.02,0.03,e.gain);
+      var os=[-8,8].map(function(dt){
+        var o=ctx.createOscillator(); o.type="sawtooth"; o.frequency.value=hz(m+S.tr); o.detune.value=dt;
+        vg.connect(o.detune); o.connect(e); o.start(S.t0); S.persist.push(o); return o;
+      });
+      return os;
+    });
+  }, step:function(S,st,t,k){
+    (S.voices||[]).forEach(function(os,i){ var m=st.choir[Math.min(i,st.choir.length-1)];
+      os.forEach(function(o){ o.frequency.setTargetAtTime(hz(m+S.tr),t,0.6); }); });
+    var v=S.vowels[k%S.vowels.length];
+    (S.formants||[]).forEach(function(bp,i){ bp.frequency.setTargetAtTime(v[i],t,2.0); });
+  } },
+
+  pulse:{ events:function(S,until){
+    var p=S.p, beat=60/p.bpm, div=p.style===1?beat/4:beat/2;
+    if(S.ev.n===undefined){ S.ev.n=0; S.ev.t=S.t0+beat*2;
+      S.ev.pat=[[0,1,2,3],[0,2,1,3],[3,2,1,0,1,2],[0,1,2,3,2,1],[0,2,3,1]][Math.floor(S.r()*5)]; }
+    while(S.ev.t<until){
+      var t=S.ev.t, st=S.chordAt(t), tones=chordTonesIn(st,52,74);
+      var idx=S.ev.pat[S.ev.n%S.ev.pat.length], m=tones[Math.min(tones.length-1,idx+(S.ev.n%16>=8?1:0))];
+      if(S.r()>0.12 && m) pluck(S,t,m,(S.ev.n%4===0?0.12:0.08)*(0.85+S.r()*0.3),1000+700*p.affect.arousal,0.45+0.4*(1-p.affect.arousal));
+      S.ev.n++; S.ev.t+=div;
+    }
+  } },
+
+  titan:{ build:function(S){
+    var ctx=S.G.ctx, sh=ctx.createWaveShaper(), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+    sh.curve=satCurve(3.2); lp.type="lowpass"; lp.frequency.value=500; lp.Q.value=0.8; g.gain.value=0;
+    sh.connect(lp); lp.connect(g); g.connect(S.out);
+    S.pow=[0,7,12].map(function(iv){
+      return [-11,0,11].map(function(dt){
+        var o=ctx.createOscillator(); o.type="sawtooth"; o.frequency.value=hz(36+S.p.root+iv+S.tr); o.detune.value=dt;
+        var og=ctx.createGain(); og.gain.value=0.07; o.connect(og); og.connect(sh); o.start(S.t0); S.persist.push(o); return o;
+      });
+    });
+    S.powG=g; S.powF=lp;
+    ENGINES.titan.step(S,S.p.prog[0],S.t0,0);
+  }, step:function(S,st,t){
+    (S.pow||[]).forEach(function(os,i){ var m=36+st.root+[0,7,12][i];
+      os.forEach(function(o){ o.frequency.setTargetAtTime(hz(m+S.tr),t,0.4); }); });
+    var L=S.p.stepLen;
+    S.powG.gain.setTargetAtTime(0.13,t,L*0.18); S.powG.gain.setTargetAtTime(0.05,t+L*0.55,L*0.15);
+    S.powF.frequency.setTargetAtTime(2600,t,L*0.2); S.powF.frequency.setTargetAtTime(700,t+L*0.55,L*0.2);
+  } },
+
+  dust:{ build:function(S){
+    var ctx=S.G.ctx, r=S.r;
+    /* tape wow: every pad oscillator's pitch drifts together */
+    var w=ctx.createOscillator(), wg=ctx.createGain(); w.frequency.value=0.35+r()*0.4; wg.gain.value=9+S.p.style*4;
+    w.connect(wg); w.start(S.t0); S.persist.push(w); S.links.push(wg);
+    S.G.layers.forEach(function(l){ l.slots.forEach(function(sl){ sl.oscs.forEach(function(o){ wg.connect(o.detune); }); }); });
+    var cr=loopNoise(S,crackleBuffer(ctx,14+r()*10,S.p.seed,false)), hp=ctx.createBiquadFilter(), cg=ctx.createGain();
+    hp.type="highpass"; hp.frequency.value=700; cg.gain.value=0.07;
+    var cl=ctx.createBiquadFilter(); cl.type="lowpass"; cl.frequency.value=4200;
+    cr.connect(hp); hp.connect(cl); cl.connect(cg); cg.connect(S.out);
+  }, events:function(S,until){ glintEvents(S,until,0.04,"musicbox",0.03); } },
+
+  abyss:{ events:function(S,until){
+    if(S.ev.t===undefined) S.ev.t=S.t0+3+S.r()*4;
+    while(S.ev.t<until){
+      var st=S.chordAt(S.ev.t), m=noteIn(S,st,55,67), pn=(S.r()*2-1)*0.6;
+      strike(S,S.ev.t,m,0.06,"ping",pn,0.9);
+      strike(S,S.ev.t+0.9+S.r()*0.6,m+12,0.018,"ping",-pn,0.9);
+      S.ev.t+=7+S.r()*9;
+    }
+  } },
+
+  ember:{ build:function(S){
+    var ctx=S.G.ctx, r=S.r;
+    var cr=loopNoise(S,crackleBuffer(ctx,9+r()*8,S.p.seed^77,true)), lp=ctx.createBiquadFilter(), cg=ctx.createGain();
+    lp.type="lowpass"; lp.frequency.value=3200; cg.gain.value=0.2;
+    cr.connect(lp); lp.connect(cg); cg.connect(S.out);
+    var rb=loopNoise(S,noiseBuffer(ctx)), rl=ctx.createBiquadFilter(), rg=ctx.createGain();
+    rl.type="lowpass"; rl.frequency.value=170; rg.gain.value=0.05;
+    rb.connect(rl); rl.connect(rg); rg.connect(S.out); lfo(S,0.3+r()*0.3,0.03,rg.gain);
+  }, events:function(S,until){
+    if(S.ev.t===undefined) S.ev.t=S.t0+2;
+    while(S.ev.t<until){
+      var st=S.chordAt(S.ev.t);
+      strike(S,S.ev.t,noteIn(S,st,60,74),0.075,"kalimba",(S.r()*2-1)*0.5,0.3);
+      if(S.r()<0.3) strike(S,S.ev.t+0.18,noteIn(S,st,60,74),0.05,"kalimba",(S.r()*2-1)*0.5,0.3);
+      S.ev.t+=1.6+S.r()*3.5;
+    }
+  } },
+
+  aurora:{ build:function(S){
+    var ctx=S.G.ctx, r=S.r, tones=chordTonesIn(S.p.prog[0],64,76).slice(0,5);
+    S.aur=tones.map(function(m,i){
+      var o=ctx.createOscillator(), g=ctx.createGain(), pn=ctx.createStereoPanner();
+      o.frequency.value=hz(m+S.tr); g.gain.value=0.008; pn.pan.value=(i/(Math.max(1,tones.length-1))*2-1)*0.8;
+      o.connect(g); g.connect(pn); pn.connect(S.out); o.start(S.t0); S.persist.push(o);
+      lfo(S,0.025+r()*0.06,0.008,g.gain); lfo(S,0.07+r()*0.05,4,o.detune);
+      return o;
+    });
+  }, step:function(S,st,t){
+    var tones=chordTonesIn(st,64,76);
+    (S.aur||[]).forEach(function(o,i){ if(tones.length) o.frequency.setTargetAtTime(hz(tones[i%tones.length]+S.tr),t,2.5); });
+  } }
+};
+
+/* sparse struck notes, placed by the picture's own highlights */
+function glintEvents(S,until,rate,kind,vel){
+  if(rate<=0) return;
+  if(S.gl===undefined){ S.gl={t:S.t0+1+S.r()*2, i:0}; }
+  var G=S.p.glints;
+  while(S.gl.t<until){
+    var st=S.chordAt(S.gl.t), pt=G.length?G[S.gl.i%G.length]:[S.r(),S.r()];
+    /* higher in the frame = higher in pitch; left-right = pan */
+    var lo=Math.round(67+(1-pt[1])*10), m=noteIn(S,st,lo,lo+7);
+    strike(S,S.gl.t,m,vel*(0.7+S.r()*0.5),kind,(pt[0]*2-1)*0.8,0.5);
+    if(kind!=="bell" && S.r()<0.22){ strike(S,S.gl.t+0.14,noteIn(S,st,lo,lo+7),vel*0.7,kind,(pt[0]*2-1)*0.8,0.5); }
+    S.gl.i++; S.gl.t+=(0.5+S.r())/rate;
+  }
+}
+
+/* extras keyed to what is in the picture, in any world */
+function extraEvents(S,until){
+  var p=S.p, t=p.tags||{}, cu=p.cues||{};
+  var birds=(t.flora||(cu.foliage>0.4&&cu.sky>0.15)) && /drift|glass|tide|aurora/.test(p.world);
+  if(birds){
+    if(S.bird===undefined) S.bird=S.t0+4+S.r()*5;
+    while(S.bird<until){ chirp(S,S.bird); S.bird+=6+S.r()*10; }
+  }
+}
+function buildPurr(S){
+  var ctx=S.G.ctx, src=loopNoise(S,noiseBuffer(ctx)), lp=ctx.createBiquadFilter(), am=ctx.createGain(), g=ctx.createGain();
+  lp.type="lowpass"; lp.frequency.value=260; am.gain.value=0.5; g.gain.value=0.0;
+  src.connect(lp); lp.connect(am); am.connect(g); g.connect(S.out);
+  lfo(S,24+S.r()*4,0.5,am.gain);                 /* the purr itself */
+  var br=S.G.ctx.createOscillator(), bg=ctx.createGain(), base=ctx.createConstantSource();
+  base.offset.value=0.11; base.connect(g.gain); base.start(S.t0); S.persist.push(base);
+  br.frequency.value=0.32; bg.gain.value=0.10; br.connect(bg); bg.connect(g.gain); br.start(S.t0); S.persist.push(br); S.links.push(bg);
+}
+
+/* the left-to-right scan: the picture's column brightness as a slow filter
+   curve, one pass per trip through the progression */
+function buildScan(S){
+  var sc=S.p.scan; if(!sc||sc.length<4) return;
+  var ctx=S.G.ctx, N=sc.length, mean=0, K=6, re=new Float32Array(K+1), im=new Float32Array(K+1), j,k;
+  for(j=0;j<N;j++) mean+=sc[j]/N;
+  for(k=1;k<=K;k++) for(j=0;j<N;j++){ var th=2*Math.PI*k*j/N; re[k]+=2/N*(sc[j]-mean)*Math.cos(th); im[k]+=2/N*(sc[j]-mean)*Math.sin(th); }
+  var peak=1e-6; for(j=0;j<64;j++){ var x=0,th2=2*Math.PI*j/64; for(k=1;k<=K;k++) x+=re[k]*Math.cos(k*th2)+im[k]*Math.sin(k*th2); peak=Math.max(peak,Math.abs(x)); }
+  for(k=1;k<=K;k++){ re[k]/=peak; im[k]/=peak; }
+  var o=ctx.createOscillator();
+  o.setPeriodicWave(ctx.createPeriodicWave(re,im,{disableNormalization:true}));
+  o.frequency.value=1/(S.p.stepLen*S.p.prog.length);
+  S.G.layers.forEach(function(l,i){
+    var src=S.p.layers[i]; if(!src || src.role==="bass") return;
+    var g=ctx.createGain(); g.gain.value=src.cutoff*0.35; o.connect(g); g.connect(l.filt.frequency); S.links.push(g);
+  });
+  o.start(S.t0); S.persist.push(o);
+}
+
+function startWorld(G,p,t0){
+  var ctx=G.ctx, S={G:G,p:p,t0:t0,tr:state.transpose,r:rng(p.seed^0x9E3779B9),ev:{},persist:[],links:[],dead:false};
+  S.out=ctx.createGain(); S.out.gain.setValueAtTime(0,t0); S.out.gain.setTargetAtTime(1,t0,0.8);
+  S.out.connect(G.busIn);
+  var send=ctx.createGain(); send.gain.value=0.35; S.out.connect(send); send.connect(G.fdnIn); S.links.push(send);
+  var E=ENGINES[p.world]||ENGINES.drift, N=p.prog.length;
+  S.chordAt=function(t){ return p.prog[Math.floor(Math.max(0,t-t0)/p.stepLen)%N]; };
+  if(E.build) E.build(S);
+  if(p.tags && p.tags.cat && !/pulse|titan/.test(p.world)) buildPurr(S);
+  buildScan(S);
+  S.stepK=1; S.nextStep=t0+p.stepLen;
+  S.tick=function(until){
+    if(S.dead) return;
+    while(N>1 && S.nextStep<until){
+      var k=S.stepK%N, st=p.prog[k], t=S.nextStep;
+      G.layers.forEach(function(l,i){
+        var ns=st.layers[i]; if(!ns) return;
+        l.slots.forEach(function(sl,s){ if(s<ns.length) sl.oscs.forEach(function(o){ o.frequency.setTargetAtTime(hz(ns[s]+S.tr),t,0.9); }); });
+      });
+      if(E.step) E.step(S,st,t,k);
+      S.stepK++; S.nextStep+=p.stepLen;
+    }
+    if(E.events) E.events(S,until);
+    extraEvents(S,until);
+  };
+  S.stop=function(t,fade){
+    if(S.dead) return; S.dead=true;
+    S.out.gain.cancelScheduledValues(t); S.out.gain.setValueAtTime(S.out.gain.value,t);
+    S.out.gain.setTargetAtTime(0,t,fade||0.4);
+    /* freeze the chord where it is, so the next scene glides from here */
+    G.layers.forEach(function(l){ l.slots.forEach(function(sl){ sl.oscs.forEach(function(o){
+      if(o.frequency.cancelAndHoldAtTime) o.frequency.cancelAndHoldAtTime(t); else o.frequency.cancelScheduledValues(t);
+    }); }); });
+    var end=t+(fade||0.4)*6+0.1;
+    S.persist.forEach(function(n){ try{ n.stop(end); }catch(e){} });
+    setTimeout(function(){
+      S.links.forEach(function(n){ try{ n.disconnect(); }catch(e){} });
+      try{ S.out.disconnect(); }catch(e){}
+    },Math.max(0,(end-ctx.currentTime)*1000)+200);
+  };
+  return S;
+}
+
+/* ---- discovery: which worlds this viewer has found, on this device ---- */
+var FOUND_KEY="pad.worlds.v1";
+function foundWorlds(){ try{ return JSON.parse(localStorage.getItem(FOUND_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function markFound(id){
+  var f=foundWorlds(), isNew=!f[id];
+  if(isNew){ f[id]=Date.now(); try{ localStorage.setItem(FOUND_KEY,JSON.stringify(f)); }catch(e){} }
+  return {found:f, isNew:isNew};
+}
+
+/* ---- seeing: an on-device image model, where one can load ----------------
+   MediaPipe's image classifier (ImageNet labels) and face detector, fetched
+   on first use. Where the page's host blocks it, or the phone is offline,
+   everything falls back to the colour-and-position cues above. */
+var SEE={state:"idle"};
+var TV_VER="0.10.14", TV="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@"+TV_VER;
+var CLS_URL="https://storage.googleapis.com/mediapipe-models/image_classifier/efficientnet_lite0/int8/1/efficientnet_lite0.tflite";
+var FACE_URL="https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
+function loadSeeing(){
+  if(SEE.promise) return SEE.promise;
+  SEE.state="loading";
+  SEE.promise=import(TV+"/vision_bundle.mjs").then(function(v){
+    return v.FilesetResolver.forVisionTasks(TV+"/wasm").then(function(fs){
+      return Promise.all([
+        v.ImageClassifier.createFromOptions(fs,{baseOptions:{modelAssetPath:CLS_URL,delegate:"CPU"},maxResults:8,scoreThreshold:0.04}),
+        v.FaceDetector.createFromOptions(fs,{baseOptions:{modelAssetPath:FACE_URL,delegate:"CPU"},minDetectionConfidence:0.55})
+      ]);
+    });
+  }).then(function(r){ SEE.cls=r[0]; SEE.face=r[1]; SEE.state="ready"; })
+    .catch(function(e){ SEE.state="off"; SEE.err=String(e&&e.message||e); });
+  return SEE.promise;
+}
+var TAG_RULES=[
+  ["cat",   /\b(tabby|tiger cat|persian cat|siamese cat|egyptian cat|cat)\b|kitten|lynx/],
+  ["creature",/dog|retriever|terrier|spaniel|poodle|shepherd|hound|pug|corgi|collie|husky|chihuahua|beagle|rabbit|hamster|ox\b|horse|sheep|ram\b|bear|bird|owl|duck|goose|parrot/],
+  ["water", /seashore|lakeside|sandbar|promontory|coral reef|boathouse|dock|pier|breakwater|liner|speedboat|canoe|paddle|yawl|catamaran|schooner|trimaran|fountain|geyser|wreck|submarine|scuba|snorkel|aquarium|fireboat|gondola|lifeboat/],
+  ["vast",  /\balp\b|volcano|valley|cliff|mountain|dam\b|suspension bridge|viaduct|castle|monastery|palace|megalith|dome/],
+  ["city",  /street sign|traffic light|streetcar|cab\b|trolleybus|minibus|limousine|police van|tram|passenger car|scoreboard|cinema|parking meter|marquee|shop|grocery|restaurant|library|monitor|screen|laptop|web site|neck brace|jersey|sweatshirt/],
+  ["fire",  /candle|torch|fire screen|stove|lampshade|matchstick|jack-o'-lantern|lighter|spotlight/],
+  ["food",  /plate|pizza|burrito|hotdog|cheeseburger|bagel|pretzel|carbonara|guacamole|consomme|trifle|ice cream|potpie|meat loaf|espresso|cup\b|mashed potato|french loaf|dough|bakery|menu|chocolate|pomegranate|banana|orange|lemon|strawberry|pineapple|fig\b|corn|mushroom|broccoli|cauliflower|zucchini|cucumber|squash|soup|wok|frying pan/],
+  ["flora", /daisy|lady's slipper|pot\b|greenhouse|hay|rapeseed|buckeye|acorn|hip\b|vase|maze|garden|picket fence|lakeside|park bench|leaf|tree/],
+  ["winter",/ski\b|snowmobile|snowplow|dogsled|shovel|mitten|igloo|alp\b/]
+];
+function see(canvas){
+  if(SEE.state!=="ready") return null;
+  try{
+    var res=SEE.cls.classify(canvas), cats=(res.classifications[0]||{}).categories||[];
+    var labels=cats.map(function(c){ return {n:(c.categoryName||c.displayName||"").toLowerCase(), s:c.score}; });
+    var tags={}, i, j;
+    for(i=0;i<labels.length;i++) for(j=0;j<TAG_RULES.length;j++)
+      if(labels[i].s>0.10 && TAG_RULES[j][1].test(labels[i].n)) tags[TAG_RULES[j][0]]=Math.max(tags[TAG_RULES[j][0]]||0,labels[i].s);
+    var fd=SEE.face.detect(canvas), area=canvas.width*canvas.height, big=0;
+    (fd.detections||[]).forEach(function(d){ var b=d.boundingBox; if(b && b.width*b.height>area*0.012) big++; });
+    if(big) tags.face=big;
+    return {labels:labels.slice(0,5), tags:tags};
+  }catch(e){ return null; }
 }
 
 /* ================= live ================= */
@@ -1279,6 +1910,7 @@ function render(p,dur,tail,shape){
   var ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2,total,sr);
   var G=graph(ctx);
   applyTo(G,p,0);
+  if(p.prog){ var SW=startWorld(G,p,0); SW.out.gain.value=1; SW.tick(total/sr); }
   if(shape!=="oneshot"){
     /* Every slow modulator is snapped to a whole number of cycles per loop, or
        the loop ends at a different point in each swell than it began and the
@@ -1508,7 +2140,7 @@ $("clear").addEventListener("click",function(){ putSaved([]); renderSaved(); });
 $("save").addEventListener("click",savePad);
 
 /* ================= ui ================= */
-var state={frame:null,patch:null,playing:false,transpose:0,orient:"landscape"};
+var state={frame:null,patch:null,scene:null,playing:false,transpose:0,orient:"landscape"};
 var view=$("view"), vctx=view.getContext("2d");
 var work=document.createElement("canvas"); work.width=720; work.height=420;
 var wctx=work.getContext("2d",{willReadFrequently:true});
@@ -1575,7 +2207,14 @@ function paintPatch(p){
   $("looplen").textContent=loopSeconds(p).toFixed(1)+" s";
   var warmth=p.affect.valence>0.63?"warm":p.affect.valence<0.37?"cool":"even";
   var energy=p.affect.arousal>0.63?"busy":p.affect.arousal<0.37?"still":"steady";
-  $("mood").innerHTML="<b>"+p.mood+"</b><i>"+warmth+" · "+energy+"</i>";
+  var wd=WORLD[p.world]||WORLDS[0];
+  $("mood").innerHTML="<b>"+wd.name+"</b><span class=\"line\">"+wd.line+"</span><i>"+p.mood+(p.mood===warmth?"":" · "+warmth)+" · "+energy+"</i>";
+  paintFound(p.world,false);
+  $("scene").innerHTML="world <b>"+wd.name+"</b> · "+p.prog.map(function(s){ return s.n; }).join(" → ")+
+    " every "+p.stepLen.toFixed(0)+" s · "+SCALES[p.scaleId].n+" melodies"+
+    (p.tags&&Object.keys(p.tags).length?" · sees "+Object.keys(p.tags).join(", "):"")+
+    (state.frame&&state.frame.labels?" ("+state.frame.labels.slice(0,3).map(function(l){return l.n.split(",")[0];}).join(", ")+")":"")+
+    " · image model "+SEE.state+" · fingerprint "+(p.seed>>>0).toString(16);
   var BN=["Shadows","Midtones","Highlights"];
   $("bandlegend").innerHTML=p.layers.map(function(l){
     return '<div class="bl"><b>'+BN[l.band]+'</b><span>'+PRETTY[((l.pc+state.transpose)%12+12)%12]+
@@ -1601,6 +2240,12 @@ function paintPatch(p){
   }
 }
 
+function paintFound(id,discover){
+  var res=discover?markFound(id):{found:foundWorlds(),isNew:false}, f=res.found, n=0;
+  $("dots").innerHTML=WORLDS.map(function(w){ if(f[w.id]) n++;
+    return '<i class="'+(w.id===id&&(f[id]||discover)?"now":f[w.id]?"on":"")+'" title="'+(f[w.id]?w.name:"?")+'"></i>'; }).join("");
+  $("foundTxt").innerHTML=(res.isNew?"<b>new world found</b> · ":"")+n+" of "+WORLDS.length+" worlds found";
+}
 function drawFrame(fr){
   if(!fr||!fr.canvas) return;
   frameFor(fr.canvas.width,fr.canvas.height);
@@ -1613,9 +2258,31 @@ function drawFrame(fr){
 }
 function repatch(){
   if(!state.frame) return;
-  state.patch=buildPatch(state.frame.f);
+  state.patch=buildScene(state.frame.f,state.frame.tags);
   paintPatch(state.patch);
-  if(state.playing) applyTo(A,state.patch,2.8);
+  if(state.playing) playScene(2.8);
+}
+/* Stop the old world first: it freezes the chord where it is, then the new
+   patch glides from there and the new world fades in over it. */
+var sched=null;
+function playScene(glide){
+  var G=live(), t=G.ctx.currentTime;
+  if(state.scene){ state.scene.stop(t,0.5); state.scene=null; }
+  applyTo(G,state.patch,glide);
+  state.scene=startWorld(G,state.patch,t+0.05);
+  state.scene.tick(t+1.5);
+  paintFound(state.patch.world,true);
+  if(!sched) sched=setInterval(function(){ if(state.scene&&A) state.scene.tick(A.ctx.currentTime+1.5); },250);
+}
+/* ask the image model what is in the picture, but never wait long for it */
+function lookAt(fr,done){
+  var fired=false;
+  var go=function(){
+    if(fired) return; fired=true;
+    var r=see(fr.canvas); fr.tags=r?r.tags:{}; fr.labels=r?r.labels:null; done();
+  };
+  if(SEE.state==="ready"||SEE.state==="off"){ go(); return; }
+  loadSeeing().then(go); setTimeout(go,2500);
 }
 function makeFrame(drawer,label,w,h){
   var c=document.createElement("canvas");
@@ -1625,7 +2292,7 @@ function makeFrame(drawer,label,w,h){
   var ar=c.width/c.height, tw=Math.round(ar>=1?170:170*ar), th=Math.round(ar>=1?170/ar:170);
   var t=document.createElement("canvas"); t.width=tw; t.height=th;
   t.getContext("2d").drawImage(c,0,0,tw,th);
-  return { label:label, canvas:c, thumb:t.toDataURL("image/jpeg",0.72), tw:tw, th:th,
+  return { label:label, canvas:c, thumb:t.toDataURL("image/jpeg",0.72), tw:tw, th:th, tags:{},
     f:analysePixels(px(c,MID,MID).data,MID,MID) };
 }
 /* One picture at a time: a new photo replaces the last, so every pad belongs
@@ -1642,6 +2309,7 @@ function addImage(img,label){
    resumes as it was. */
 var wasPlaying=false, picking=false, pickTimer=null;
 function pausePick(){
+  loadSeeing();                    /* warm the image model while the picker is open */
   if(picking) return;
   picking=true;
   wasPlaying=state.playing;
@@ -1668,9 +2336,15 @@ function fromFile(f){
   var img=new Image(), u=URL.createObjectURL(f);
   img.onload=function(){
     stopLive();
-    addImage(img,(f.name||"photo").replace(/\.[^.]+$/,"").slice(0,22));
+    var iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+    var fr=makeFrame(function(c,w,h){ c.drawImage(img,0,0,w,h); },(f.name||"photo").replace(/\.[^.]+$/,"").slice(0,22),iw,ih);
     URL.revokeObjectURL(u);
-    endPick(true);                 /* the new pad starts where the old one left off */
+    drawFrame(fr);
+    $("nametag").textContent="listening to the picture…";
+    lookAt(fr,function(){
+      addFrame(fr);
+      endPick(true);               /* the new pad starts where the old one left off */
+    });
   };
   img.onerror=function(){
     $("nametag").textContent="couldn't read that image";
@@ -1724,8 +2398,11 @@ function setPlaying(on,fast){
   state.playing=on;
   $("play").textContent=on?"■ Stop":"▶ Play";
   $("dockPlay").textContent=on?"Stop":"Play";
-  if(on){ applyTo(G,state.patch,0.1); G.out.gain.setTargetAtTime(master,G.ctx.currentTime,fast?0.5:1.6); }
-  else { G.out.gain.setTargetAtTime(0,G.ctx.currentTime,fast?0.25:0.9); $("breath").style.transform="scaleX(0)"; }
+  if(on){ playScene(0.1); G.out.gain.setTargetAtTime(master,G.ctx.currentTime,fast?0.5:1.6); }
+  else {
+    G.out.gain.setTargetAtTime(0,G.ctx.currentTime,fast?0.25:0.9); $("breath").style.transform="scaleX(0)";
+    if(state.scene){ state.scene.stop(G.ctx.currentTime,fast?0.25:0.9); state.scene=null; }
+  }
 }
 function toggle(){ setPlaying(!state.playing); }
 $("play").addEventListener("click",toggle);
@@ -1739,7 +2416,7 @@ $("vol").addEventListener("input",function(e){
 function transpose(d){
   state.transpose=Math.max(-12,Math.min(12,state.transpose+d));
   $("tr").textContent=(state.transpose>0?"+":state.transpose<0?"":"±")+state.transpose+" st";
-  if(state.patch){ paintPatch(state.patch); if(state.playing) applyTo(A,state.patch,0.8); }
+  if(state.patch){ paintPatch(state.patch); if(state.playing) playScene(0.8); }
 }
 $("more").addEventListener("click",function(){
   var on=document.body.classList.toggle("expanded");
@@ -1812,6 +2489,9 @@ $("build").textContent="build "+(document.documentElement.getAttribute("data-bui
 if(window.matchMedia("(max-width:780px)").matches) $("rowsWrap").removeAttribute("open");
 renderSaved();
 addScene(SCENES[0]);
+/* hook for the render tests in tools/calibration; inert otherwise */
+if(/[?&]test\b/.test(location.search)) window.__pad={makeFrame:makeFrame,lookAt:lookAt,buildScene:buildScene,render:render,
+  graph:graph,applyTo:applyTo,startWorld:startWorld,WORLDS:WORLDS,SEE:SEE,loadSeeing:loadSeeing,state:state,addFrame:addFrame,setPlaying:setPlaying};
 })();
 </script>
 
