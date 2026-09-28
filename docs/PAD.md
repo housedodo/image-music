@@ -786,3 +786,31 @@ Night snow under an aurora scored Ember 0.62, Dust 0.56, Aurora 0.02:
 
 The photo now plays Aurora (0.93, then Dust 0.56). The 21-photo corpus and the two alpine
 rides keep their worlds.
+
+# Journey: the pad reads the picture and fills in
+
+A pad used to be the same from the first second to the last, apart from its chords. Now:
+
+- **Sections.** The reading head crosses the picture left to right once per trip through the
+  progression. Each quarter of the picture is a section. Its brightness and saturation,
+  relative to the whole picture, set a section energy `e` (0–1). At every chord change the
+  body and top filters glide to `cutoff × (0.6 + 0.8e)`, so a dark stretch of the picture
+  closes the sound and a bright one opens it. The brightness scan (column profile as a
+  periodic filter LFO) now moves ±55 % instead of ±35 %.
+- **Details arrive one at a time.** There are four: **glimmer** (tiny sine grains at chord
+  tones, C5–C6, sent into the long tail), **arpeggio** (soft triangle eighth notes on the
+  chord, pattern from the fingerprint), **melody** (a slow sine line whose pitch follows the
+  brightness under the reading head, so it traces the picture's light), and **bells**
+  (rare, placed higher in bright sections). The fingerprint chooses the order. Busy pictures
+  bring all of them in within ~40 s, calm ones within ~80 s. Each fades in over 14 s.
+- **Sections change the details too.** Glimmer is denser where the section is bright, the
+  arpeggio drops notes in sparse sections instead of getting quieter, and bells come more
+  often in energetic ones.
+- **Worlds skip what they already have:** Pulse has no extra arpeggio, Abyss has no
+  arpeggio or glimmer, Glass and Titan have no extra bells, and Choir has no melody.
+
+Measured over 100 s on two photos (pad muted): the details rise from −42 dB in the first
+20 s to −27 dB by 75–95 s. They were then raised 4 dB so that, fully arrived, they sit about
+4 dB under the pad. The full mix rises about 0.8 dB across the build. The A-weighted
+centroid stays at 600–870 Hz, 0–3 % of the energy is above 2 kHz, and peaks stay at or
+below 0.65.
